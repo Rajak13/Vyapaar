@@ -10,8 +10,8 @@ function Ribbon() {
   return (
     <svg
       className="ribbon"
-      viewBox="0 0 1000 600"
-      preserveAspectRatio="xMaxYMax slice"
+      viewBox="0 0 1500 1000"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
     >
       <path
@@ -28,9 +28,8 @@ function Ribbon() {
         </textPath>
       </text>
     </svg>
-  )
+  );
 }
-
 function SunIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -105,6 +104,7 @@ export default function App() {
 
   function handleLogout() {
     fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+    sessionStorage.removeItem('vyapaar_nav')
     setUser(null)
     showToast('You have been logged out.', 'success')
   }

@@ -310,32 +310,64 @@
 /* ── Mobile ── */
 @media (max-width: 640px) {
   .hero-content {
-    padding: 20px 16px 130px;
+    padding: 20px 16px 100px;
   }
 
   .nav-actions {
-    gap: 8px;
+    gap: 6px;
   }
 
+  /* Tighten nav buttons on mobile */
+  .btn-ghost {
+    padding: 7px 8px;
+    font-size: 12px;
+  }
+
+  .btn-primary {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  /* Hero: stack wordmark + building vertically, no left offset */
   .hero-main {
-    min-height: 50vh;
-  }
-
-  .hero-building {
-    height: 45vh;
+    min-height: 75vw;
+    padding-left: 0;
+    padding-top: 16px;
+    align-items: center;
   }
 
   .wordmark {
-    font-size: clamp(52px, 14vw, 80px);
+    font-size: clamp(56px, 17vw, 88px);
+    text-align: center;
+    z-index: 3; /* above building */
   }
 
-  .cta-pill,
-  .theme-toggle {
+  /* Building: centered under wordmark, contained within viewport */
+  .hero-building {
+    position: absolute;
+    left: 50%;
+    top: 55%;
+    transform: translate(-50%, -20%);
+    height: 56vh;
+    width: auto;
+    z-index: 1;
+  }
+
+  /* Ribbon: shrink font so text stays readable on narrow viewport */
+  .ribbon-text {
+    font-size: 11px;
+  }
+
+  /* Bottom controls: keep them in view and not overlapping */
+  .cta-pill {
     left: 16px;
-    right: 16px;
+    bottom: 20px;
+    right: auto;
   }
 
   .theme-toggle {
+    right: 16px;
+    bottom: 20px;
     left: auto;
   }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
+import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
@@ -39,12 +40,26 @@ function FilterIcon() {
 function DownloadIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 }
+function DeleteIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+}
+
+// ── Paid status badge ─────────────────────────────────────────────────────────
+function PayStatusBadge({ status }) {
+  const map = {
+    paid:    { label: 'Paid',    cls: 'pr-status-paid'    },
+    partial: { label: 'Partial', cls: 'pr-status-partial' },
+    pending: { label: 'Pending', cls: 'pr-status-pending' },
+  }
+  const { label, cls } = map[status] ?? map.pending
+  return <span className={`pr-status-badge ${cls}`}>{label}</span>
+}
 
 // ── Skeleton row ──────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
     <tr className="pr-skeleton-row">
-      {[...Array(8)].map((_, i) => (
+      {[...Array(10)].map((_, i) => (
         <td key={i}><span className="pr-skeleton" /></td>
       ))}
     </tr>
@@ -55,7 +70,7 @@ function SkeletonRow() {
 function EmptyState({ hasFilters, onAdd }) {
   return (
     <tr>
-      <td colSpan={8} className="pr-empty">
+      <td colSpan={9} className="pr-empty">
         <div className="pr-empty-inner">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--dm)', marginBottom: 12 }}>
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -75,7 +90,7 @@ function EmptyState({ hasFilters, onAdd }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PurchaseRegister({ theme, onToast, refreshKey: externalRefreshKey }) {
-  // ── Filter / search state ─────────────────────────────────────────────────
+  // ── Filter / search state ─────────────────────────────────────────────
   const [search,      setSearch]      = useState('')
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')
@@ -93,6 +108,9 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
   // ── Form state ────────────────────────────────────────────────────────────
   const [showForm,    setShowForm]    = useState(false)
   const [editEntry,   setEditEntry]   = useState(null)
+
+  // ── Invoice overlay ────────────────────────────────────────────────────────
+  const [selectedEntry, setSelectedEntry] = useState(null)
 
   // ── Internal refresh ──────────────────────────────────────────────────────
   const [refreshKey, setRefreshKey]  = useState(0)
@@ -149,6 +167,28 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
   function openEdit(entry) {
     setEditEntry(entry)
     setShowForm(true)
+  }
+
+  function handleDelete(id) {
+    if (!window.confirm('Delete this entry? This action cannot be undone.')) return
+    fetch(`${API_URL}/api/purchase-entries/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+      .then(async res => {
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error ?? 'Failed to delete entry')
+        }
+      })
+      .then(() => {
+        refresh()
+        if (onToast) onToast('Entry deleted successfully.', 'success')
+      })
+      .catch(err => {
+        console.error(err)
+        if (onToast) onToast(err.message || 'Failed to delete entry', 'error')
+      })
   }
 
   // CSV export
@@ -251,6 +291,7 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
               <th className="pr-col-num">Taxable</th>
               <th className="pr-col-num">Tax Amt.</th>
               <th className="pr-col-num">Grand Total</th>
+              <th>Status</th>
               <th className="pr-col-actions"></th>
             </tr>
           </thead>
@@ -258,7 +299,7 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
             {loading && [...Array(5)].map((_, i) => <SkeletonRow key={i} />)}
             {!loading && entries.length === 0 && <EmptyState hasFilters={hasFilters} onAdd={() => { setEditEntry(null); setShowForm(true) }} />}
             {!loading && entries.map(entry => (
-              <tr key={entry.id} className="pr-row">
+              <tr key={entry.id} className="pr-row pr-row-clickable" onClick={() => setSelectedEntry(entry)}>
                 <td className="pr-td-bold">{entry.invoice_no}</td>
                 <td className="pr-td-muted">{entry.date_bs || adToBs(entry.date_ad) || '—'}</td>
                 <td className="pr-td-muted">{fmtDate(entry.date_ad)}</td>
@@ -272,9 +313,13 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
                 <td className="pr-col-num pr-td-muted">{entry.taxable_purchases > 0 ? fmtRs(entry.taxable_purchases) : '—'}</td>
                 <td className="pr-col-num pr-td-muted">{entry.tax_amount > 0 ? fmtRs(entry.tax_amount) : '—'}</td>
                 <td className="pr-col-num pr-td-grand">{fmtRs(entry.grand_total)}</td>
-                <td className="pr-col-actions">
+                <td><PayStatusBadge status={entry.paid_status} /></td>
+                <td className="pr-col-actions" onClick={e => e.stopPropagation()}>
                   <button className="pr-action-btn" onClick={() => openEdit(entry)} title="Edit entry">
                     <EditIcon />
+                  </button>
+                  <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry.id)} title="Delete entry">
+                    <DeleteIcon />
                   </button>
                 </td>
               </tr>
@@ -315,6 +360,15 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
           initialData={editEntry}
           onClose={() => { setShowForm(false); setEditEntry(null) }}
           onSuccess={handleEntrySuccess}
+        />
+      )}
+
+      {/* ── Invoice overlay ── */}
+      {selectedEntry && (
+        <InvoiceOverlay
+          type="purchase"
+          data={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
         />
       )}
     </div>

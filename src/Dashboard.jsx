@@ -3,6 +3,8 @@ import './Dashboard.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import PurchaseRegister from './PurchaseRegister'
 import Suppliers from './Suppliers'
+import Payments from './Payments'
+import Settings from './Settings'
 import { adToBs } from './adToBs.js'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
@@ -71,6 +73,9 @@ function RegisterIcon() {
 function SuppliersNavIcon() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
 }
+function PaymentsNavIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/><path d="M6 12H4M20 12h-2"/></svg>
+}
 function SettingsIcon() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
 }
@@ -78,7 +83,9 @@ function SettingsIcon() {
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard({ user: initialUser, theme, onThemeChange, onLogout, onToast }) {
   const [user, setUser]                   = useState(initialUser)
-  const [activeNav, setActiveNav]         = useState('overview')
+  const [activeNav, setActiveNav]         = useState(
+    () => sessionStorage.getItem('vyapaar_nav') ?? 'overview'
+  )
   const [showEntryForm, setShowEntryForm] = useState(false)
 
   // ── Refresh key — increment to re-fetch all data ──────────────────────────
@@ -104,13 +111,19 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
         .then(r => r.ok ? r.json() : null),
       fetch(`${API_URL}/api/purchase-entries?limit=3`, { credentials: 'include' })
         .then(r => r.ok ? r.json() : null),
+      fetch(`${API_URL}/api/suppliers/balances`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null),
     ])
-      .then(([statsData, entriesData]) => {
+      .then(([statsData, entriesData, balancesData]) => {
         if (statsData) {
+          // Calculate real pending payments from supplier balances
+          const pendingPayments = balancesData?.suppliers
+            ? balancesData.suppliers.reduce((sum, s) => sum + Math.max(0, parseFloat(s.balance_due ?? 0)), 0)
+            : 0
           setStats({
             totalPurchasesFY:  statsData.totalPurchasesFY  ?? 0,
             activeSuppliers:   statsData.activeSuppliers   ?? 0,
-            pendingPayments:   statsData.pendingPayments   ?? 0,
+            pendingPayments,
             entriesThisMonth:  statsData.entriesThisMonth  ?? 0,
           })
         }
@@ -142,6 +155,8 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
     { key: 'overview',  Icon: OverviewIcon,     title: 'Overview'          },
     { key: 'register',  Icon: RegisterIcon,     title: 'Purchase Register' },
     { key: 'suppliers', Icon: SuppliersNavIcon, title: 'Suppliers'         },
+    { key: 'payments',  Icon: PaymentsNavIcon,  title: 'Payments'          },
+    { key: 'settings',  Icon: SettingsIcon,     title: 'Settings'          },
   ]
 
   function handleEntrySuccess(msg) {
@@ -152,8 +167,13 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
   function handleNavClick(key) {
     setActiveNav(key)
+    sessionStorage.setItem('vyapaar_nav', key)
     // Opening the form directly from the sidebar is removed —
     // the Purchase Register page has its own Add Entry button
+  }
+  function handleLogout() {
+    onLogout();
+    sessionStorage.removeItem('vyapaar_nav');
   }
 
   return (
@@ -191,7 +211,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               </div>
             </div>
 
-            <button className="dash-logout-btn" onClick={onLogout} aria-label="Log out" title="Log out">
+            <button className="dash-logout-btn" onClick={handleLogout} aria-label="Log out" title="Log out">
               <LogoutIcon />
             </button>
           </div>
@@ -215,8 +235,13 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 </button>
               ))}
               <div className="dash-sidebar-divider" />
-              <button className="dash-sidebar-btn" title="Settings" aria-label="Settings">
-                <SettingsIcon />
+              <button
+                className="dash-sidebar-btn"
+                onClick={handleLogout}
+                title="Log out"
+                aria-label="Log out"
+              >
+                <LogoutIcon />
               </button>
             </div>
           </aside>
@@ -233,9 +258,15 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             )}
 
             {activeNav === 'suppliers' && (
-              <Suppliers
-                onToast={onToast}
-              />
+              <Suppliers onToast={onToast} />
+            )}
+
+            {activeNav === 'payments' && (
+              <Payments onToast={onToast} />
+            )}
+
+            {activeNav === 'settings' && (
+              <Settings onToast={onToast} user={user} />
             )}
 
             {activeNav === 'overview' && (<>
@@ -446,6 +477,21 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
         </div>
 
       </div>
+
+      {/* ── Mobile bottom tab bar — replaces sidebar on small screens ── */}
+      <nav className="dash-mobile-nav" aria-label="Main navigation">
+        {NAV_ITEMS.map(({ key, Icon, title }) => (
+          <button
+            key={key}
+            className={`dash-mobile-nav-btn${activeNav === key ? ' active' : ''}`}
+            onClick={() => handleNavClick(key)}
+            aria-label={title}
+          >
+            <Icon />
+            <span className="dash-mobile-nav-label">{title.split(' ')[0]}</span>
+          </button>
+        ))}
+      </nav>
 
       {/* ── Purchase Entry Form modal ── */}
       {showEntryForm && (

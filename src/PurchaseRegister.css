@@ -225,6 +225,8 @@
 
 .pr-row { transition: background 0.1s; }
 .pr-row:hover { background: var(--dash-panel-hover); }
+.pr-row-clickable { cursor: pointer; }
+.pr-row-clickable:hover { background: var(--dash-panel-hover); }
 
 .pr-col-num { text-align: right !important; }
 .pr-col-actions { width: 40px; padding: 8px 12px !important; }
@@ -348,3 +350,18 @@
   .pr-header { flex-direction: column; gap: 12px; }
   .pr-header-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* ── Paid status badge ── */
+.pr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.pr-status-paid    { background: rgba(22, 163, 74,  0.14); color: #15803d; border: 1px solid rgba(22, 163, 74,  0.25); }
+.pr-status-partial { background: rgba(202, 138, 4,  0.14); color: #b45309; border: 1px solid rgba(202, 138, 4,  0.25); }
+.pr-status-pending { background: rgba(148, 163, 184, 0.14); color: var(--dm); border: 1px solid rgba(148, 163, 184, 0.2); }

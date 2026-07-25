@@ -15,12 +15,15 @@ function EditIcon()   { return <svg width="13" height="13" viewBox="0 0 24 24" f
 function SearchIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> }
 function CloseIcon()  { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg> }
 function ArrowIcon()  { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> }
+function DeleteIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
     <tr className="sup-skeleton-row">
-      {[...Array(6)].map((_, i) => <td key={i}><span className="sup-skeleton" style={{ width: `${50 + i * 8}%` }} /></td>)}
+      {[...Array(7)].map((_, i) => <td key={i}><span className="sup-skeleton" style={{ width: `${50 + i * 8}%` }} /></td>)}
     </tr>
   )
 }
@@ -174,6 +177,28 @@ export default function Suppliers({ onToast }) {
 
   function openEdit(s) { setEditTarget(s); setShowForm(true) }
 
+  function handleDelete(id) {
+    if (!window.confirm('Deactivate this supplier? This will hide them from active lists but keep history.')) return
+    fetch(`${API_URL}/api/suppliers/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+      .then(async res => {
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error ?? 'Failed to deactivate supplier')
+        }
+      })
+      .then(() => {
+        refresh()
+        if (onToast) onToast('Supplier deactivated successfully.', 'success')
+      })
+      .catch(err => {
+        console.error(err)
+        if (onToast) onToast(err.message || 'Failed to deactivate supplier', 'error')
+      })
+  }
+
   return (
     <div className="sup-page">
 
@@ -279,6 +304,9 @@ export default function Suppliers({ onToast }) {
                 <td className="sup-col-actions">
                   <button className="sup-action-btn" onClick={() => openEdit(s)} title="Edit supplier">
                     <EditIcon />
+                  </button>
+                  <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s.supplier_id)} title="Deactivate supplier">
+                    <DeleteIcon />
                   </button>
                 </td>
               </tr>

@@ -211,8 +211,8 @@ vyapaaar-landing/
 │   ├── Dashboard.css
 │   ├── Toast.jsx          (notification component, used by AuthModal)
 │   ├── Toast.css
-│   ├── PurchaseEntryForm.jsx  (CREATE/EDIT purchase entries — FULLY IMPLEMENTED)
-│   ├── PurchaseRegister.jsx   (LIST/VIEW/EXPORT purchase entries — FULLY IMPLEMENTED)
+│   ├── PurchaseEntryForm.jsx  (CREATE/EDIT/DELETE purchase entries — FULLY IMPLEMENTED)
+│   ├── PurchaseRegister.jsx   (LIST/VIEW/EXPORT/DELETE purchase entries — FULLY IMPLEMENTED)
 │   ├── Suppliers.jsx      (SUPPLIER CRUD — FULLY IMPLEMENTED)
 │   ├── adToBs.js          (AD↔BS date conversion utilities)
 │   └── index.css          (color tokens, theme classes)
@@ -221,7 +221,7 @@ vyapaaar-landing/
 │   ├── index.js           (app entry — CORS w/ credentials, cookie-parser, helmet, rate limiting, mounts /auth & /api)
 │   ├── routes.js          (auth routes: POST /auth/register, /auth/login, /auth/logout, GET /auth/me)
 │   ├── middleware.js      (requireAuth — verifies JWT cookie)
-│   └── purchase-entries.js (purchase entries + suppliers routes: GET/POST /api/suppliers, GET/POST/PUT /api/suppliers/:id, GET /api/suppliers/balances, GET/POST /api/purchase-entries, GET /api/purchase-entries/stats)
+│   └── purchase-entries.js (purchase entries + suppliers routes: GET/POST/PUT/DELETE /api/suppliers, GET/POST/PUT /api/suppliers/:id, GET /api/suppliers/balances, GET/POST /api/purchase-entries, GET/POST/PUT/DELETE /api/purchase-entries/:id, GET /api/purchase-entries/stats)
 └── auth/
     ├── schema.sql          (users table only — see note above)
     └── README.md
@@ -249,7 +249,7 @@ vyapaaar-landing/
      endpoints, CORS locked to FRONTEND_URL, httpOnly cookies
 
 2. **Purchase Entry form** (`PurchaseEntryForm.jsx`) — **FULLY IMPLEMENTED**:
-   - Create and edit purchase entries
+   - Create, edit, and delete purchase entries
    - Supplier search/typeahead with "add new supplier" inline
    - Automatic BS↔AD date conversion
    - Real-time calculation of totals and tax (with optional 13% auto-tax)
@@ -264,18 +264,18 @@ vyapaaar-landing/
    - Filter by supplier, date range
    - Column sorting (implicit via date ordering)
    - **CSV export** (client-side generated)
-   - Edit/delete actions (edit implemented, delete via TODO in schema but UI ready)
+   - Edit/delete actions (both implemented)
    - Loading skeletons, empty states
    - Responsive design
 
 4. **Suppliers management** (`Suppliers.jsx`) — **FULLY IMPLEMENTED**:
    - List view with search and supplier balances (purchased/paid/due)
-   - Create/edit suppliers
+   - Create/edit/deactivate suppliers (soft delete via `is_active=false`)
    - Toggle active/inactive status
    - Loading skeletons, empty states
    - Responsive design
 
-5. **Dashboard shell** (`Dashboard.jsx`) — **LARGELY IMPLEMENTED WITH REAL DATA** ✅ **FIXED**:
+5. **Dashboard shell** (`Dashboard.jsx`) — **LARGELY IMPLEMENTED WITH REAL DATA**:
    - **Top nav**: search, theme toggle, logout, user info
    - **Left sidebar**: Overview/Purchase Register/Suppliers navigation
    - **Right sidebar**: 
@@ -381,9 +381,9 @@ The realistic next step, in order:
    - Consider adding trend charts to reports/exports
 
 **Note**: The purchase entry form, register, and supplier management are
-**fully functional** and capable of replacing the paper ledger today. The
-remaining work enhances usability and meets specific client requests (PDF
-export, fiscal year adherence, etc.).
+**fully functional** (including create, read, update, delete) and capable of
+replacing the paper ledger today. The remaining work enhances usability and
+meets specific client requests (PDF export, fiscal year adherence, etc.).
 
 ---
 

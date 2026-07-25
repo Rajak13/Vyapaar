@@ -21,9 +21,9 @@ function parseNumeric(val) {
   return isNaN(n) ? null : n
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/suppliers — list all active suppliers for autocomplete
 router.get('/suppliers', async (_req, res) => {
@@ -89,6 +89,27 @@ router.put('/suppliers/:id', async (req, res) => {
   }
 })
 
+// DELETE /api/suppliers/:id — soft delete (set is_active to false) or hard delete?
+// We'll do a soft delete by setting is_active = false, preserving history.
+router.delete('/suppliers/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE suppliers
+       SET is_active = false
+       WHERE id = $1
+       RETURNING id`,
+      [id]
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
+    return res.json({ message: 'Supplier deactivated.' })
+  } catch (err) {
+    console.error('[DELETE /api/suppliers/:id]', err)
+    return res.status(500).json({ error: 'Failed to deactivate supplier.' })
+  }
+})
+
 // GET /api/suppliers/balances — all supplier balances from the view
 router.get('/suppliers/balances', async (_req, res) => {
   try {
@@ -114,6 +135,36 @@ router.get('/suppliers/balances', async (_req, res) => {
     return res.status(500).json({ error: 'Failed to load supplier balances.' })
   }
 })
+
+// GET /api/suppliers/:id/balance — single supplier balance for overpayment check
+// MUST be defined before /suppliers/balances to avoid route shadowing issues
+router.get('/suppliers/:id/balance', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid supplier id.' })
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         COALESCE(sb.total_purchased, 0) AS total_purchased,
+         COALESCE(sb.total_paid,      0) AS total_paid,
+         COALESCE(sb.balance_due,     0) AS balance_due
+       FROM supplier_balances sb
+       WHERE sb.supplier_id = $1`,
+      [id]
+    )
+    if (rows.length === 0) {
+      // Supplier exists but has no purchases yet
+      return res.json({ total_purchased: 0, total_paid: 0, balance_due: 0 })
+    }
+    return res.json(rows[0])
+  } catch (err) {
+    console.error('[GET /api/suppliers/:id/balance]', err)
+    return res.status(500).json({ error: 'Failed to load supplier balance.' })
+  }
+})
+
+// ════════════════════════════════════════════════════════════════════════════════
+// PURCHASE ENTRIES
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/purchase-entries/stats — summary numbers for the dashboard
 // MUST be defined before GET /purchase-entries to avoid being shadowed
@@ -198,9 +249,17 @@ router.get('/purchase-entries', async (req, res) => {
          pe.created_at,
          s.id   AS supplier_id,
          s.name AS supplier_name,
-         s.pan  AS supplier_pan
+         s.pan  AS supplier_pan,
+         COALESCE(ped.paid_amount, 0)  AS paid_amount,
+         COALESCE(ped.amount_due,  0)  AS amount_due,
+         CASE
+           WHEN COALESCE(ped.amount_due, pe.grand_total) <= 0             THEN 'paid'
+           WHEN COALESCE(ped.paid_amount, 0) > 0                          THEN 'partial'
+           ELSE 'pending'
+         END AS paid_status
        FROM purchase_entries pe
        JOIN suppliers s ON s.id = pe.supplier_id
+       LEFT JOIN purchase_entry_due ped ON ped.purchase_entry_id = pe.id
        ${where}
        ORDER BY pe.date_ad DESC
        LIMIT $${p} OFFSET $${p + 1}`,
@@ -311,20 +370,34 @@ router.post('/purchase-entries', async (req, res) => {
       return res.status(400).json({ error: 'No business profile found. Create one first.' })
     }
 
-    // Resolve fiscal_period_id — optional, use provided or look up by date
+    // Resolve fiscal_period_id — match by BS year + month derived from date_bs
     let fpId = fiscal_period_id ? parseInt(fiscal_period_id, 10) : null
+    if (!fpId && date_bs) {
+      // date_bs format: 'YYYY-MM-DD' or 'YYYY-M-D' — extract year and month
+      const bsParts = String(date_bs).split('-')
+      const bsYear  = parseInt(bsParts[0], 10)
+      const bsMonth = parseInt(bsParts[1], 10)
+      if (!isNaN(bsYear) && !isNaN(bsMonth)) {
+        const { rows: fp } = await pool.query(
+          `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 LIMIT 1`,
+          [bsYear, bsMonth]
+        )
+        fpId = fp[0]?.id ?? null
+        if (!fpId) {
+          return res.status(400).json({
+            error: `No fiscal period found for BS ${bsYear}/${String(bsMonth).padStart(2,'0')}. Please add it in Settings → Fiscal Periods first.`,
+          })
+        }
+      }
+    }
+    // Final fallback: first period (legacy behaviour when date_bs is missing)
     if (!fpId) {
-      const d = new Date(date_ad)
-      const { rows: fp } = await pool.query(
-        `SELECT id FROM fiscal_periods
-         WHERE bs_year IS NOT NULL
-         LIMIT 1`
-      )
+      const { rows: fp } = await pool.query(`SELECT id FROM fiscal_periods LIMIT 1`)
       fpId = fp[0]?.id ?? null
     }
     if (!fpId) {
       return res.status(400).json({
-        error: 'Could not determine fiscal period. Please set up fiscal periods first.',
+        error: 'Could not determine fiscal period. Please set up fiscal periods in Settings first.',
       })
     }
 
@@ -358,6 +431,252 @@ router.post('/purchase-entries', async (req, res) => {
   } catch (err) {
     console.error('[POST /api/purchase-entries]', err)
     return res.status(500).json({ error: 'Failed to create purchase entry.' })
+  }
+})
+
+// DELETE /api/purchase-entries/:id — soft delete? Actually, we might want to keep history, so we can either
+// actually delete or mark as inactive. Since there's no deleted column, we'll do a hard delete for simplicity,
+// but note that this will break any references from supplier_payments if they exist (purchase_entry_id FK).
+// For now, we'll allow hard delete and rely on the fact that supplier_payments.purchase_entry_id is nullable.
+// If we want to keep history, we could add a `deleted_at` column later. For MVP, hard delete.
+router.delete('/purchase-entries/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+
+  try {
+    // First, optionally check if there are any payments linked to this entry (if you want to restrict delete)
+    // For now, we'll allow delete and set purchase_entry_id NULL in supplier_payments? Actually FK is set to RESTRICT?
+    // Let's check the schema: purchase_entry_id INT REFERENCES purchase_entries(id) -- nullable = general credit, not tied to one invoice
+    // It does NOT specify ON DELETE behavior, so default is RESTRICT? In PostgreSQL, foreign key default is RESTRICT.
+    // So we need to either set the FK to NULL first or delete dependent rows.
+    // We'll do: set purchase_entry_id to NULL in supplier_payments for rows pointing to this entry, then delete the entry.
+    await pool.query(
+      `UPDATE supplier_payments SET purchase_entry_id = NULL WHERE purchase_entry_id = $1`,
+      [id]
+    )
+    const { rows } = await pool.query(
+      `DELETE FROM purchase_entries WHERE id = $1 RETURNING id`,
+      [id]
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Purchase entry not found.' })
+    return res.json({ message: 'Purchase entry deleted.' })
+  } catch (err) {
+    console.error('[DELETE /api/purchase-entries/:id]', err)
+    return res.status(500).json({ error: 'Failed to delete purchase entry.' })
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPPLIER PAYMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VALID_METHODS = ['cash', 'online', 'cheque']
+
+// GET /api/supplier-payments — list payments, optional ?supplier_id= filter
+router.get('/supplier-payments', async (req, res) => {
+  const { supplier_id } = req.query
+  const limit  = Math.min(parseInt(req.query.limit  ?? '50', 10), 200)
+  const offset = parseInt(req.query.offset ?? '0', 10)
+  const params = []
+  let p = 1
+  const where = supplier_id ? `WHERE sp.supplier_id = $${p++}` : ''
+  if (supplier_id) params.push(parseInt(supplier_id, 10))
+  params.push(limit, offset)
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         sp.id,
+         sp.supplier_id,
+         sp.purchase_entry_id,
+         sp.date_bs,
+         sp.date_ad,
+         sp.amount,
+         sp.payment_method,
+         sp.reference_no,
+         sp.notes,
+         sp.created_at,
+         s.name  AS supplier_name,
+         pe.invoice_no
+       FROM supplier_payments sp
+       JOIN suppliers s ON s.id = sp.supplier_id
+       LEFT JOIN purchase_entries pe ON pe.id = sp.purchase_entry_id
+       ${where}
+       ORDER BY sp.date_ad DESC
+       LIMIT $${p} OFFSET $${p + 1}`,
+      params
+    )
+    const countParams = supplier_id ? [parseInt(supplier_id, 10)] : []
+    const { rows: cr } = await pool.query(
+      `SELECT COUNT(*) FROM supplier_payments sp ${where}`,
+      countParams
+    )
+    return res.json({ payments: rows, total: parseInt(cr[0].count, 10) })
+  } catch (err) {
+    console.error('[GET /api/supplier-payments]', err)
+    return res.status(500).json({ error: 'Failed to load payments.' })
+  }
+})
+
+// POST /api/supplier-payments — record a payment
+router.post('/supplier-payments', async (req, res) => {
+  const {
+    supplier_id, purchase_entry_id,
+    date_bs, date_ad, amount,
+    payment_method, reference_no, notes,
+  } = req.body ?? {}
+
+  // Validation
+  if (!supplier_id)    return res.status(400).json({ error: 'Supplier is required.' })
+  if (!date_ad)        return res.status(400).json({ error: 'Date (AD) is required.' })
+  if (!date_bs)        return res.status(400).json({ error: 'Date (BS) is required.' })
+  const amt = parseFloat(amount)
+  if (isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Amount must be greater than zero.' })
+  if (!payment_method || !VALID_METHODS.includes(payment_method)) {
+    return res.status(400).json({ error: 'Payment method must be cash, online, or cheque.' })
+  }
+  if (payment_method === 'cheque' && !reference_no?.trim()) {
+    return res.status(400).json({ error: 'Cheque number is required for cheque payments.' })
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO supplier_payments
+         (supplier_id, purchase_entry_id, date_bs, date_ad,
+          amount, payment_method, reference_no, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING *`,
+      [
+        parseInt(supplier_id, 10),
+        purchase_entry_id ? parseInt(purchase_entry_id, 10) : null,
+        date_bs,
+        date_ad,
+        amt,
+        payment_method,
+        reference_no?.trim() || null,
+        notes?.trim() || null,
+        req.user.id,
+      ]
+    )
+    return res.status(201).json({ payment: rows[0] })
+  } catch (err) {
+    console.error('[POST /api/supplier-payments]', err)
+    return res.status(500).json({ error: 'Failed to record payment.' })
+  }
+})
+
+// DELETE /api/supplier-payments/:id — hard delete a payment record
+router.delete('/supplier-payments/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid payment id.' })
+  try {
+    const { rows } = await pool.query(
+      `DELETE FROM supplier_payments WHERE id = $1 RETURNING id`,
+      [id]
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Payment not found.' })
+    return res.json({ message: 'Payment deleted.' })
+  } catch (err) {
+    console.error('[DELETE /api/supplier-payments/:id]', err)
+    return res.status(500).json({ error: 'Failed to delete payment.' })
+  }
+})
+
+// GET /api/supplier-payments/stats — total paid across all suppliers
+router.get('/supplier-payments/stats', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         COALESCE(SUM(amount), 0)                                        AS total_paid,
+         COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cash'),    0) AS paid_cash,
+         COALESCE(SUM(amount) FILTER (WHERE payment_method = 'online'),  0) AS paid_online,
+         COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cheque'),  0) AS paid_cheque
+       FROM supplier_payments`
+    )
+    return res.json(rows[0])
+  } catch (err) {
+    console.error('[GET /api/supplier-payments/stats]', err)
+    return res.status(500).json({ error: 'Failed to load payment stats.' })
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS — business profile + fiscal periods
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /api/settings/business-profile
+router.get('/settings/business-profile', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT * FROM business_profile LIMIT 1`)
+    return res.json({ profile: rows[0] ?? null })
+  } catch (err) {
+    console.error('[GET /api/settings/business-profile]', err)
+    return res.status(500).json({ error: 'Failed to load business profile.' })
+  }
+})
+
+// PUT /api/settings/business-profile
+router.put('/settings/business-profile', async (req, res) => {
+  const { taxpayer_name, taxpayer_registration_no, pan, address } = req.body ?? {}
+  if (!taxpayer_name?.trim()) {
+    return res.status(400).json({ error: 'Taxpayer name is required.' })
+  }
+  try {
+    // Upsert — update if exists, insert if not
+    const existing = await pool.query(`SELECT id FROM business_profile LIMIT 1`)
+    let row
+    if (existing.rowCount > 0) {
+      const { rows } = await pool.query(
+        `UPDATE business_profile SET taxpayer_name=$1, taxpayer_registration_no=$2, pan=$3, address=$4
+         WHERE id=$5 RETURNING *`,
+        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null, pan?.trim()||null, address?.trim()||null, existing.rows[0].id]
+      )
+      row = rows[0]
+    } else {
+      const { rows } = await pool.query(
+        `INSERT INTO business_profile (taxpayer_name, taxpayer_registration_no, pan, address)
+         VALUES ($1,$2,$3,$4) RETURNING *`,
+        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null, pan?.trim()||null, address?.trim()||null]
+      )
+      row = rows[0]
+    }
+    return res.json({ profile: row })
+  } catch (err) {
+    console.error('[PUT /api/settings/business-profile]', err)
+    return res.status(500).json({ error: 'Failed to save business profile.' })
+  }
+})
+
+// GET /api/fiscal-periods — list all
+router.get('/fiscal-periods', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM fiscal_periods ORDER BY bs_year DESC, bs_month DESC`
+    )
+    return res.json({ periods: rows })
+  } catch (err) {
+    console.error('[GET /api/fiscal-periods]', err)
+    return res.status(500).json({ error: 'Failed to load fiscal periods.' })
+  }
+})
+
+// POST /api/fiscal-periods — create new period
+router.post('/fiscal-periods', async (req, res) => {
+  const { fiscal_year_bs, bs_year, bs_month, fiscal_month_index } = req.body ?? {}
+  if (!fiscal_year_bs || !bs_year || !bs_month || !fiscal_month_index) {
+    return res.status(400).json({ error: 'All fiscal period fields are required.' })
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index)
+       VALUES ($1,$2,$3,$4) ON CONFLICT (bs_year, bs_month) DO UPDATE
+       SET fiscal_year_bs=EXCLUDED.fiscal_year_bs, fiscal_month_index=EXCLUDED.fiscal_month_index
+       RETURNING *`,
+      [fiscal_year_bs, parseInt(bs_year,10), parseInt(bs_month,10), parseInt(fiscal_month_index,10)]
+    )
+    return res.status(201).json({ period: rows[0] })
+  } catch (err) {
+    console.error('[POST /api/fiscal-periods]', err)
+    return res.status(500).json({ error: 'Failed to create fiscal period.' })
   }
 })
 
