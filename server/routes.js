@@ -45,15 +45,20 @@ function signToken(user) {
   )
 }
 
-function setCookieAndRespond(res, user) {
+function setCookieAndRespond(res, req, user) {
   const token = signToken(user)
+
+  // Determine if the request is secure (HTTPS) to set Secure flag correctly.
+  // Trust the `x-forwarded-proto` header if behind a proxy.
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol).toLowerCase()
+  const isSecure = proto === 'https'
 
   res.cookie('vyapaaar_token', token, {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === 'production',
-    // 'none' required for cross-origin requests (Vercel frontend → Render backend).
-    // 'lax' silently blocks the cookie when domains differ.
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure:   isSecure,
+    // When secure, we must use SameSite=None to allow cross-site requests.
+    // When not secure (e.g., localhost HTTP), use SameSite=Lax for better compatibility.
+    sameSite: isSecure ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   })
 
@@ -103,7 +108,7 @@ router.post('/register', async (req, res) => {
       [email.toLowerCase().trim(), password_hash, trimmedName]
     )
 
-    return setCookieAndRespond(res, rows[0])
+    return setCookieAndRespond(res, req, rows[0])
   } catch (err) {
     console.error('[auth/register]', err)
     return res.status(500).json({ error: 'Registration failed. Please try again.' })
@@ -133,7 +138,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
 
-    return setCookieAndRespond(res, user)
+    return setCookieAndRespond(res, req, user)
   } catch (err) {
     console.error('[auth/login]', err)
     return res.status(500).json({ error: 'Login failed. Please try again.' })
