@@ -4,6 +4,8 @@ import AuthModal from './AuthModal'
 import Toast from './Toast'
 import Dashboard from './Dashboard'
 
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 const RIBBON_TEXT = 'Leave the boring stuff to us  \u00B7  Vyapaar  \u00B7  '
 
 function Ribbon() {
@@ -76,7 +78,7 @@ export default function App() {
   // On every page load, check if a valid session cookie exists.
   // If it does, restore the user and go straight to the dashboard.
   useEffect(() => {
-    fetch('/auth/me', { credentials: 'include' })
+    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.user) setUser(data.user)
@@ -103,7 +105,7 @@ export default function App() {
   }
 
   function handleLogout() {
-    fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
     sessionStorage.removeItem('vyapaar_nav')
     setUser(null)
     showToast('You have been logged out.', 'success')

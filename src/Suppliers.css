@@ -404,4 +404,36 @@
   .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 92vh; animation-name: sup-slide-up; }
   @keyframes sup-slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .sup-overlay        { align-items: flex-end; justify-content: center; }
+
+  /* Hide header button on mobile — replaced by FAB */
+  .sup-header .sup-btn-primary { display: none; }
+
+  /* Floating action button — pinned above the mobile bottom nav */
+  .sup-fab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: fixed;
+    bottom: 72px; /* sits above the 56px mobile nav bar */
+    right: 18px;
+    z-index: 120;
+    background: #ab2f00;
+    color: #fff;
+    border: none;
+    border-radius: 28px;
+    padding: 12px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(171,47,0,0.4);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .sup-fab:hover  { background: #862300; transform: translateY(-2px); }
+  .sup-fab:active { transform: scale(0.97); }
+}
+
+@media (min-width: 769px) {
+  /* Hide FAB on desktop — header button is visible */
+  .sup-fab { display: none; }
 }

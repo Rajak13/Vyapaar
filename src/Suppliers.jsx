@@ -316,6 +316,16 @@ export default function Suppliers({ onToast }) {
         </table>
       </div>
 
+      {/* Mobile floating action button — visible only on small screens via CSS */}
+      <button
+        className="sup-fab"
+        onClick={() => { setEditTarget(null); setShowForm(true) }}
+        aria-label="Add Supplier"
+      >
+        <PlusIcon />
+        <span>Add Supplier</span>
+      </button>
+
       {showForm && (
         <SupplierForm
           supplier={editTarget}
