@@ -8,7 +8,7 @@
 import { Router } from 'express'
 import { pool } from './routes.js'
 import { requireAuth } from './middleware.js'
-import { ad2bs } from 'nepali-date-converter'
+// import { ad2bs } from 'nepali-date-converter'
 
 const router = Router()
 
