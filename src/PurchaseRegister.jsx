@@ -92,7 +92,7 @@ function EmptyState({ hasFilters, onAdd }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function PurchaseRegister({ theme, onToast, refreshKey: externalRefreshKey }) {
+export default function PurchaseRegister({ theme, onToast }) {
   const [search,      setSearch]      = useState('')
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')

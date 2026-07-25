@@ -282,7 +282,6 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               <PurchaseRegister
                 theme={theme}
                 onToast={onToast}
-                refreshKey={refreshKey}
               />
             )}
 

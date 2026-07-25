@@ -290,7 +290,6 @@ export default function Payments({ onToast }) {
   const [search,      setSearch]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
   const [showForm,    setShowForm]    = useState(false)
-  const [refreshKey,  setRefreshKey]  = useState(0)
   const [selectedPayment, setSelectedPayment] = useState(null)
   const qc = useQueryClient()
   const refresh = useCallback(() => {
