@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
-import { cachedFetch, invalidateCache } from './apiCache'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Q,
+  fetchStats, fetchRecentEntries, fetchSupplierBals,
+  fetchSupplierList, fetchPaymentStats, fetchPayments, fetchEntries,
+} from './api'
 import './Dashboard.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import PurchaseRegister from './PurchaseRegister'
@@ -79,89 +84,72 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
     () => sessionStorage.getItem('vyapaar_nav') ?? 'overview'
   )
   const [showEntryForm, setShowEntryForm] = useState(false)
+  const [searchQuery,   setSearchQuery]   = useState('')
 
-  // ── Refresh key — increment to re-fetch all data ──────────────────────────
-  const [refreshKey, setRefreshKey] = useState(0)
+  const qc = useQueryClient()
+
+  // ── Invalidate + refetch everything after mutations ───────────────────────
   const triggerRefresh = useCallback(() => {
-    invalidateCache(
-      '/api/purchase-entries/stats',
-      '/api/purchase-entries',
-      '/api/suppliers/balances',
-    )
-    setRefreshKey(k => k + 1)
+    qc.invalidateQueries({ queryKey: Q.stats() })
+    qc.invalidateQueries({ queryKey: Q.recentEntries() })
+    qc.invalidateQueries({ queryKey: Q.supplierBals() })
+    qc.invalidateQueries({ queryKey: Q.suppliers() })
+    qc.invalidateQueries({ queryKey: Q.payments('') })
+    qc.invalidateQueries({ queryKey: Q.paymentStats() })
+    // Also nuke the paginated entries cache
+    qc.invalidateQueries({ queryKey: ['entries'] })
+  }, [qc])
+
+  // ── Fetch overview data via React Query ───────────────────────────────────
+  const { data: statsData,    isLoading: loadingStats    } = useQuery({ queryKey: Q.stats(),         queryFn: fetchStats })
+  const { data: entriesData,  isLoading: loadingEntries  } = useQuery({ queryKey: Q.recentEntries(), queryFn: fetchRecentEntries })
+  const { data: balancesData, isLoading: loadingBalances } = useQuery({ queryKey: Q.supplierBals(),  queryFn: fetchSupplierBals })
+
+  const loadingData = loadingStats || loadingEntries || loadingBalances
+
+  // ── Prefetch all other pages as soon as the dashboard mounts ─────────────
+  // This means navigating to Suppliers / Register / Payments for the first time
+  // is INSTANT — data is already in cache.
+  useEffect(() => {
+    qc.prefetchQuery({ queryKey: Q.suppliers(),    queryFn: fetchSupplierList })
+    qc.prefetchQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
+    qc.prefetchQuery({ queryKey: Q.payments('limit=50'), queryFn: () => fetchPayments('limit=50') })
+    qc.prefetchQuery({ queryKey: Q.entries('limit=20&offset=0'), queryFn: () => fetchEntries('limit=20&offset=0') })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Live data state ───────────────────────────────────────────────────────
-  const [stats, setStats] = useState({
-    totalPurchasesFY:  0,
-    activeSuppliers:   0,
-    pendingPayments:   0,
-    entriesThisMonth:  0,
-    taxTotal:          0,
-    fiscal:            null,
-  })
-  const [entries,          setEntries]          = useState([])
-  const [entriesTotal,     setEntriesTotal]     = useState(0)
-  const [supplierBalances, setSupplierBalances] = useState([])   // real supplier spend data
-  const [loadingData,      setLoadingData]      = useState(true)
-  const [searchQuery,      setSearchQuery]      = useState('')   // top nav search bar
+  // ── Derive overview values from query data ────────────────────────────────
+  const stats = {
+    totalPurchasesFY:  statsData?.totalPurchasesFY  ?? 0,
+    activeSuppliers:   statsData?.activeSuppliers   ?? 0,
+    pendingPayments:   balancesData?.suppliers
+      ? balancesData.suppliers.reduce((s, sup) => s + Math.max(0, parseFloat(sup.balance_due ?? 0)), 0)
+      : 0,
+    entriesThisMonth:  statsData?.entriesThisMonth  ?? 0,
+    taxTotal:          statsData?.taxTotal           ?? 0,
+    fiscal:            statsData?.fiscal             ?? null,
+  }
 
-  useEffect(() => {
-    // Show cached data immediately — no spinner flash on re-navigation
-    const statsEntry    = cachedFetch('/api/purchase-entries/stats')
-    const entriesEntry  = cachedFetch('/api/purchase-entries?limit=5')
-    const balancesEntry = cachedFetch('/api/suppliers/balances')
+  const entries      = entriesData?.entries ?? []
+  const entriesTotal = entriesData?.total   ?? 0
 
-    Promise.all([statsEntry, entriesEntry, balancesEntry])
-      .then(([statsRes, entriesRes, balancesRes]) => {
-        const statsData    = statsRes.data
-        const entriesData  = entriesRes.data
-        const balancesData = balancesRes.data
+  const supplierBalances = (() => {
+    if (!balancesData?.suppliers) return []
+    const sorted = [...balancesData.suppliers]
+      .filter(s => parseFloat(s.total_purchased) > 0)
+      .sort((a, b) => parseFloat(b.total_purchased) - parseFloat(a.total_purchased))
+      .slice(0, 5)
+    const maxAmt = parseFloat(sorted[0]?.total_purchased ?? 0)
+    return sorted.map(s => ({
+      name:    s.supplier_name,
+      amount:  fmtRs(s.total_purchased),
+      pct:     maxAmt > 0 ? Math.round((parseFloat(s.total_purchased) / maxAmt) * 100) : 0,
+      initial: s.supplier_name?.[0]?.toUpperCase() ?? '?',
+    }))
+  })()
 
-        if (statsData) {
-          const pendingPayments = balancesData?.suppliers
-            ? balancesData.suppliers.reduce((sum, s) => sum + Math.max(0, parseFloat(s.balance_due ?? 0)), 0)
-            : 0
-          setStats({
-            totalPurchasesFY:  statsData.totalPurchasesFY  ?? 0,
-            activeSuppliers:   statsData.activeSuppliers   ?? 0,
-            pendingPayments,
-            entriesThisMonth:  statsData.entriesThisMonth  ?? 0,
-            taxTotal:          statsData.taxTotal           ?? 0,
-            fiscal:            statsData.fiscal             ?? null,
-          })
-        }
-        if (entriesData) {
-          setEntries(entriesData.entries ?? [])
-          setEntriesTotal(entriesData.total ?? 0)
-        }
-        if (balancesData?.suppliers) {
-          const sorted = [...balancesData.suppliers]
-            .filter(s => parseFloat(s.total_purchased) > 0)
-            .sort((a, b) => parseFloat(b.total_purchased) - parseFloat(a.total_purchased))
-            .slice(0, 5)
-          const maxAmt = parseFloat(sorted[0]?.total_purchased ?? 0)
-          setSupplierBalances(sorted.map(s => ({
-            name:    s.supplier_name,
-            amount:  fmtRs(s.total_purchased),
-            pct:     maxAmt > 0 ? Math.round((parseFloat(s.total_purchased) / maxAmt) * 100) : 0,
-            initial: s.supplier_name?.[0]?.toUpperCase() ?? '?',
-          })))
-        }
-
-        // Only show loading state if NONE of the responses were cached
-        const allCached = statsRes.fromCache && entriesRes.fromCache && balancesRes.fromCache
-        if (allCached) setLoadingData(false)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingData(false))
-  }, [refreshKey])
-
-  // User is already passed as a prop from App.jsx, no need to refetch.
-  // Kept only to sync local state if the prop changes.
-  useEffect(() => {
-    setUser(initialUser)
-  }, [initialUser])
+  // Sync user state when prop changes
+  useEffect(() => { setUser(initialUser) }, [initialUser])
 
   const fullName = user?.full_name ?? ''
   const hour     = new Date().getHours()

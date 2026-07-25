@@ -160,22 +160,29 @@ router.get('/suppliers/balances', async (req, res) => {
       `SELECT
          s.id                                                AS supplier_id,
          s.name                                              AS supplier_name,
-         s.pan                                              AS supplier_pan,
+         s.pan                                               AS supplier_pan,
          s.phone,
          s.address,
          s.is_active,
          s.created_at,
-         COALESCE(SUM(pe.grand_total), 0)                   AS total_purchased,
-         COALESCE(SUM(sp.amount), 0)                        AS total_paid,
-         COALESCE(SUM(pe.grand_total), 0)
-           - COALESCE(SUM(sp.amount), 0)                    AS balance_due
+         COALESCE(pe.total_purchased, 0)                     AS total_purchased,
+         COALESCE(sp.total_paid, 0)                          AS total_paid,
+         COALESCE(pe.total_purchased, 0)
+           - COALESCE(sp.total_paid, 0)                      AS balance_due
        FROM suppliers s
-       LEFT JOIN purchase_entries pe
-              ON pe.supplier_id = s.id AND pe.created_by = $1
-       LEFT JOIN supplier_payments sp
-              ON sp.supplier_id = s.id AND sp.created_by = $1
+       LEFT JOIN (
+         SELECT supplier_id, SUM(grand_total) AS total_purchased
+         FROM purchase_entries
+         WHERE created_by = $1
+         GROUP BY supplier_id
+       ) pe ON pe.supplier_id = s.id
+       LEFT JOIN (
+         SELECT supplier_id, SUM(amount) AS total_paid
+         FROM supplier_payments
+         WHERE created_by = $1
+         GROUP BY supplier_id
+       ) sp ON sp.supplier_id = s.id
        WHERE s.user_id = $1
-       GROUP BY s.id, s.name, s.pan, s.phone, s.address, s.is_active, s.created_at
        ORDER BY s.name ASC`,
       [req.user.id]
     )

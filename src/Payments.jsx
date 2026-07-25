@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { cachedFetch, invalidateCache } from './apiCache'
+import { useState, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Q, fetchSupplierList, fetchPayments, fetchPaymentStats } from './api'
 import './Payments.css'
 import { adToBs } from './adToBs.js'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -286,48 +287,36 @@ function PaymentForm({ suppliers, onClose, onSuccess }) {
 
 // ── Main Payments page ────────────────────────────────────────────────────────
 export default function Payments({ onToast }) {
-  const [payments,    setPayments]    = useState([])
-  const [total,       setTotal]       = useState(0)
-  const [stats,       setStats]       = useState(null)
-  const [suppliers,   setSuppliers]   = useState([])
-  const [loading,     setLoading]     = useState(true)
   const [search,      setSearch]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
   const [showForm,    setShowForm]    = useState(false)
   const [refreshKey,  setRefreshKey]  = useState(0)
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const qc = useQueryClient()
   const refresh = useCallback(() => {
-    invalidateCache('/api/supplier-payments', '/api/supplier-payments/stats', '/api/suppliers/balances')
-    setRefreshKey(k => k + 1)
-  }, [])
+    qc.invalidateQueries({ queryKey: ['payments'] })
+    qc.invalidateQueries({ queryKey: Q.paymentStats() })
+    qc.invalidateQueries({ queryKey: Q.supplierBals() })
+    qc.invalidateQueries({ queryKey: Q.stats() })
+  }, [qc])
 
-  // Load supplier list for filter + form (cached)
-  useEffect(() => {
-    cachedFetch('/api/suppliers')
-      .then(({ data }) => setSuppliers(data?.suppliers ?? []))
-      .catch(() => {})
-  }, [])
+  // Build params string for payments query key
+  const payParamsStr = suppFilter ? `limit=50&supplier_id=${suppFilter}` : 'limit=50'
 
-  // Load payments + stats (cached for default view)
-  useEffect(() => {
-    const isDefaultView = !suppFilter
-    const params = new URLSearchParams({ limit: 50 })
-    if (suppFilter) params.set('supplier_id', suppFilter)
+  // Supplier list (pre-fetched by Dashboard)
+  const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
+  const suppliers = suppData?.suppliers ?? []
 
-    const payPath   = `/api/supplier-payments?${params}`
-    const statsPath = '/api/supplier-payments/stats'
+  // Payments list
+  const { data: payData, isLoading: loading } = useQuery({
+    queryKey: Q.payments(payParamsStr),
+    queryFn:  () => fetchPayments(payParamsStr),
+  })
+  const payments = payData?.payments ?? []
+  const total    = payData?.total    ?? 0
 
-    const payFetch   = isDefaultView ? cachedFetch(payPath)   : fetch((import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + payPath,   { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => ({ data: d }))
-    const statsFetch = isDefaultView ? cachedFetch(statsPath) : fetch((import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + statsPath, { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => ({ data: d }))
-
-    Promise.all([payFetch, statsFetch])
-      .then(([{ data: payData }, { data: statsData }]) => {
-        if (payData) { setPayments(payData.payments ?? []); setTotal(payData.total ?? 0) }
-        if (statsData) setStats(statsData)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [suppFilter, refreshKey])
+  // Payment stats
+  const { data: stats } = useQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
 
   const filtered = payments.filter(p => {
     if (!search.trim()) return true

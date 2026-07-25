@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { cachedFetch, invalidateCache } from './apiCache'
+import { useState, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Q, fetchSupplierBals, apiFetch } from './api'
 import './Suppliers.css'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -144,30 +145,24 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
 
 // ── Main Suppliers page ───────────────────────────────────────────────────────
 export default function Suppliers({ onToast }) {
-  const [suppliers,   setSuppliers]   = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState('')
   const [search,      setSearch]      = useState('')
   const [showForm,    setShowForm]    = useState(false)
   const [editTarget,  setEditTarget]  = useState(null)
-  const [refreshKey,  setRefreshKey]  = useState(0)
-  const refresh = useCallback(() => {
-    invalidateCache('/api/suppliers/balances', '/api/purchase-entries/stats')
-    setRefreshKey(k => k + 1)
-  }, [])
 
-  useEffect(() => {
-    const cached = cachedFetch('/api/suppliers/balances')
-    // If already cached, clear spinner immediately
-    const existing = cached // promise
-    existing
-      .then(({ data }) => {
-        setSuppliers(data?.suppliers ?? [])
-        setError('')
-      })
-      .catch(() => setError('Failed to load suppliers.'))
-      .finally(() => setLoading(false))
-  }, [refreshKey])
+  const qc = useQueryClient()
+  const refresh = useCallback(() => {
+    qc.invalidateQueries({ queryKey: Q.supplierBals() })
+    qc.invalidateQueries({ queryKey: Q.suppliers() })
+    qc.invalidateQueries({ queryKey: Q.stats() })
+  }, [qc])
+
+  const { data, isLoading: loading, error: queryError } = useQuery({
+    queryKey: Q.supplierBals(),
+    queryFn:  fetchSupplierBals,
+  })
+
+  const suppliers = data?.suppliers ?? []
+  const error     = queryError?.message ?? ''
 
   const filtered = suppliers.filter(s =>
     !search.trim() ||

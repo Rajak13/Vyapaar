@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { cachedFetch, invalidateCache } from './apiCache'
+import { useState, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Q, fetchSupplierList, fetchEntries } from './api'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -92,77 +93,53 @@ function EmptyState({ hasFilters, onAdd }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PurchaseRegister({ theme, onToast, refreshKey: externalRefreshKey }) {
-  // ── Filter / search state ─────────────────────────────────────────────
   const [search,      setSearch]      = useState('')
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')
-  const [suppFilter,  setSuppFilter]  = useState('')  // supplier_id
-  const [suppliers,   setSuppliers]   = useState([])
+  const [suppFilter,  setSuppFilter]  = useState('')
   const [showFilters, setShowFilters] = useState(false)
-
-  // ── Data state ────────────────────────────────────────────────────────────
-  const [entries,     setEntries]     = useState([])
-  const [total,       setTotal]       = useState(0)
   const [page,        setPage]        = useState(0)
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState('')
-
-  // ── Form state ────────────────────────────────────────────────────────────
   const [showForm,    setShowForm]    = useState(false)
   const [editEntry,   setEditEntry]   = useState(null)
-
-  // ── Invoice overlay ────────────────────────────────────────────────────────
   const [selectedEntry, setSelectedEntry] = useState(null)
 
-  // ── Internal refresh ──────────────────────────────────────────────────────
-  const [refreshKey, setRefreshKey]  = useState(0)
+  const qc = useQueryClient()
   const refresh = useCallback(() => {
-    invalidateCache('/api/purchase-entries', '/api/purchase-entries/stats')
-    setRefreshKey(k => k + 1)
-  }, [])
+    qc.invalidateQueries({ queryKey: ['entries'] })
+    qc.invalidateQueries({ queryKey: Q.stats() })
+    qc.invalidateQueries({ queryKey: Q.supplierBals() })
+  }, [qc])
 
   // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchTimer = useRef(null)
   function handleSearch(val) {
     setSearch(val)
     setPage(0)
     clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(refresh, 350)
+    searchTimer.current = setTimeout(() => setDebouncedSearch(val), 350)
   }
 
-  // Load supplier list for filter dropdown (cached)
-  useEffect(() => {
-    cachedFetch('/api/suppliers')
-      .then(({ data }) => setSuppliers(data?.suppliers ?? []))
-      .catch(() => {})
-  }, [])
+  // Build query params string
+  const params = new URLSearchParams({ limit: PAGE_SIZE, offset: page * PAGE_SIZE })
+  if (suppFilter)               params.set('supplier_id', suppFilter)
+  if (dateFrom)                 params.set('date_from',   dateFrom)
+  if (dateTo)                   params.set('date_to',     dateTo)
+  if (debouncedSearch.trim())   params.set('search',      debouncedSearch.trim())
+  const paramsStr = params.toString()
 
-  // Fetch entries when page / filters / refresh key changes
-  useEffect(() => {
-    setError('')
+  // Supplier list (pre-fetched by Dashboard)
+  const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
+  const suppliers = suppData?.suppliers ?? []
 
-    const params = new URLSearchParams({
-      limit:  PAGE_SIZE,
-      offset: page * PAGE_SIZE,
-    })
-    if (suppFilter) params.set('supplier_id', suppFilter)
-    if (dateFrom)   params.set('date_from',   dateFrom)
-    if (dateTo)     params.set('date_to',      dateTo)
-    if (search.trim()) params.set('search',    search.trim())
-
-    const path = `/api/purchase-entries?${params}`
-    // Cache only the default unfiltered first page — dynamic queries skip cache
-    const isDefaultView = !suppFilter && !dateFrom && !dateTo && !search.trim() && page === 0
-    const fetcher = isDefaultView ? cachedFetch(path) : fetch(
-      (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + path,
-      { credentials: 'include' }
-    ).then(r => r.ok ? r.json() : Promise.reject()).then(data => ({ data }))
-
-    fetcher
-      .then(({ data }) => { setEntries(data?.entries ?? []); setTotal(data?.total ?? 0) })
-      .catch(() => setError('Failed to load entries.'))
-      .finally(() => setLoading(false))
-  }, [page, suppFilter, dateFrom, dateTo, refreshKey, externalRefreshKey])
+  // Entries list
+  const { data: entriesData, isLoading: loading, error: queryError } = useQuery({
+    queryKey: Q.entries(paramsStr),
+    queryFn:  () => fetchEntries(paramsStr),
+  })
+  const entries = entriesData?.entries ?? []
+  const total   = entriesData?.total   ?? 0
+  const error   = queryError?.message  ?? ''
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const hasFilters = Boolean(search || suppFilter || dateFrom || dateTo)

@@ -3,6 +3,7 @@ import './App.css'
 import AuthModal from './AuthModal'
 import Toast from './Toast'
 import Dashboard from './Dashboard'
+import { queryClient } from './queryClient'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -100,6 +101,7 @@ export default function App() {
 
   // Called by AuthModal on success — receives the user object from the API response
   function handleAuthSuccess(msg, loggedInUser) {
+    queryClient.clear()
     setUser(loggedInUser)
     showToast(msg, 'success')
   }
@@ -107,6 +109,7 @@ export default function App() {
   function handleLogout() {
     fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
     sessionStorage.removeItem('vyapaar_nav')
+    queryClient.clear()
     setUser(null)
     showToast('You have been logged out.', 'success')
   }
