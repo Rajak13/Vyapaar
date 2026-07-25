@@ -11,16 +11,6 @@ const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Static mock data kept only for values not yet backed by an endpoint
-// ─────────────────────────────────────────────────────────────────────────────
-const MOCK_SUPPLIERS = [
-  { name: 'Supplier A', amount: 'Rs. 0', pct: 0, initial: 'A' },
-  { name: 'Supplier B', amount: 'Rs. 0', pct: 0, initial: 'B' },
-]
-const MOCK_FISCAL = {
-  label: '2081/82', range: 'Shrawan — Ashad', progress: 25, entries: 0,
-}
-const MOCK_TAX = { vat: 'Rs. 0', pct: 0 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers ─────────────────────────────────────────────────────────────────────
@@ -99,25 +89,27 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
     activeSuppliers:   0,
     pendingPayments:   0,
     entriesThisMonth:  0,
+    taxTotal:          0,
+    fiscal:            null,
   })
-  const [entries, setEntries]           = useState([])
-  const [entriesTotal, setEntriesTotal] = useState(0)
-  const [loadingData, setLoadingData]   = useState(true)
+  const [entries,          setEntries]          = useState([])
+  const [entriesTotal,     setEntriesTotal]     = useState(0)
+  const [supplierBalances, setSupplierBalances] = useState([])   // real supplier spend data
+  const [loadingData,      setLoadingData]      = useState(true)
+  const [searchQuery,      setSearchQuery]      = useState('')   // top nav search bar
 
-  // Re-fetch on mount and on every refreshKey change
   useEffect(() => {
     setLoadingData(true)
     Promise.all([
       fetch(`${API_URL}/api/purchase-entries/stats`, { credentials: 'include' })
         .then(r => r.ok ? r.json() : null),
-      fetch(`${API_URL}/api/purchase-entries?limit=3`, { credentials: 'include' })
+      fetch(`${API_URL}/api/purchase-entries?limit=5`, { credentials: 'include' })
         .then(r => r.ok ? r.json() : null),
       fetch(`${API_URL}/api/suppliers/balances`, { credentials: 'include' })
         .then(r => r.ok ? r.json() : null),
     ])
       .then(([statsData, entriesData, balancesData]) => {
         if (statsData) {
-          // Calculate real pending payments from supplier balances
           const pendingPayments = balancesData?.suppliers
             ? balancesData.suppliers.reduce((sum, s) => sum + Math.max(0, parseFloat(s.balance_due ?? 0)), 0)
             : 0
@@ -126,11 +118,27 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             activeSuppliers:   statsData.activeSuppliers   ?? 0,
             pendingPayments,
             entriesThisMonth:  statsData.entriesThisMonth  ?? 0,
+            taxTotal:          statsData.taxTotal           ?? 0,
+            fiscal:            statsData.fiscal             ?? null,
           })
         }
         if (entriesData) {
           setEntries(entriesData.entries ?? [])
           setEntriesTotal(entriesData.total ?? 0)
+        }
+        if (balancesData?.suppliers) {
+          // Top 5 by total purchased, with percentage of the highest value
+          const sorted = [...balancesData.suppliers]
+            .filter(s => parseFloat(s.total_purchased) > 0)
+            .sort((a, b) => parseFloat(b.total_purchased) - parseFloat(a.total_purchased))
+            .slice(0, 5)
+          const maxAmt = parseFloat(sorted[0]?.total_purchased ?? 0)
+          setSupplierBalances(sorted.map(s => ({
+            name:   s.supplier_name,
+            amount: fmtRs(s.total_purchased),
+            pct:    maxAmt > 0 ? Math.round((parseFloat(s.total_purchased) / maxAmt) * 100) : 0,
+            initial: s.supplier_name?.[0]?.toUpperCase() ?? '?',
+          })))
         }
       })
       .catch(() => {})
@@ -194,9 +202,29 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
           </div>
 
           <div className="dash-topnav-right">
+            {/* Search bar — filters recent entries table; press Enter to go to full register */}
             <div className="dash-search">
               <SearchIcon />
-              <input type="text" placeholder="Search invoices or suppliers..." className="dash-search-input" />
+              <input
+                type="text"
+                placeholder="Search invoices or suppliers…"
+                className="dash-search-input"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    handleNavClick('register')
+                    setSearchQuery('')
+                  }
+                }}
+              />
+              {searchQuery && (
+                <button
+                  className="dash-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >×</button>
+              )}
             </div>
 
             <div className="dash-theme-toggle" role="group" aria-label="Theme">
@@ -340,7 +368,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               <div className="dash-card dash-table-card">
                 <div className="dash-table-header">
                   <h4 className="dash-table-title">Recent Purchase Entries</h4>
-                  <button className="dash-view-all-btn">
+                  <button className="dash-view-all-btn" onClick={() => handleNavClick('register')}>
                     <span>View all entries</span>
                     <ChevronIcon />
                   </button>
@@ -365,26 +393,43 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                           </td>
                         </tr>
                       )}
-                      {entries.map(entry => (
-                        <tr key={entry.id}>
-                          <td className="dash-td-muted">{entry.invoice_no}</td>
-                          <td className="dash-td-muted">{entry.date_bs || adToBs(entry.date_ad) || '—'}</td>
-                          <td className="dash-td-muted">{entry.supplier_name}</td>
-                          <td className="dash-td-muted text-right">
-                            {entry.taxable_purchases > 0 ? fmtRs(entry.taxable_purchases) : '—'}
-                          </td>
-                          <td className="dash-td-bold text-right">{fmtRs(entry.grand_total)}</td>
-                          <td>
-                            {/* Status is not yet on the schema — show Pending as default */}
-                            <span className="dash-badge dash-badge-pending">Pending</span>
-                          </td>
-                        </tr>
-                      ))}
+                      {entries
+                        .filter(e => {
+                          if (!searchQuery.trim()) return true
+                          const q = searchQuery.toLowerCase()
+                          return (
+                            e.invoice_no?.toLowerCase().includes(q) ||
+                            e.supplier_name?.toLowerCase().includes(q)
+                          )
+                        })
+                        .map(entry => (
+                          <tr key={entry.id}>
+                            <td className="dash-td-muted">{entry.invoice_no}</td>
+                            <td className="dash-td-muted">{entry.date_bs || adToBs(entry.date_ad) || '—'}</td>
+                            <td className="dash-td-muted">{entry.supplier_name}</td>
+                            <td className="dash-td-muted text-right">
+                              {entry.taxable_purchases > 0 ? fmtRs(entry.taxable_purchases) : '—'}
+                            </td>
+                            <td className="dash-td-bold text-right">{fmtRs(entry.grand_total)}</td>
+                            <td>
+                              <span className={`dash-badge dash-badge-${
+                                entry.paid_status === 'paid'    ? 'paid' :
+                                entry.paid_status === 'partial' ? 'partial' : 'pending'
+                              }`}>
+                                {entry.paid_status === 'paid' ? 'Paid' : entry.paid_status === 'partial' ? 'Partial' : 'Pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      }
                     </tbody>
                   </table>
                 </div>
                 <div className="dash-table-footer">
-                  Showing latest {entries.length} of {entriesTotal} entries
+                  {searchQuery.trim()
+                    ? `Showing filtered results — press Enter to search all ${entriesTotal} entries`
+                    : `Showing latest ${entries.length} of ${entriesTotal} entries`
+                  }
                 </div>
               </div>
 
@@ -394,19 +439,21 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="dash-insight-label">Tax Breakdown</div>
                   <div className="dash-insight-row">
                     <span className="dash-insight-name">VAT (13%)</span>
-                    {/* TODO: wire to SUM(tax_amount) from purchase-entries/stats once added */}
-                    <span className="dash-insight-val">{MOCK_TAX.vat}</span>
+                    <span className="dash-insight-val">{fmtRs(stats.taxTotal)}</span>
                   </div>
                   <div className="dash-progress-track">
-                    <div className="dash-progress-bar" style={{ width: `${MOCK_TAX.pct}%` }} />
+                    <div className="dash-progress-bar" style={{
+                      width: stats.totalPurchasesFY > 0
+                        ? `${Math.min(100, Math.round((parseFloat(stats.taxTotal) / parseFloat(stats.totalPurchasesFY)) * 100))}%`
+                        : '0%'
+                    }} />
                   </div>
-                  <p className="dash-insight-note">Accumulated tax liabilities for the current fiscal month.</p>
+                  <p className="dash-insight-note">Accumulated tax liabilities for the current fiscal year.</p>
                 </div>
 
                 <div className="dash-card">
                   <div className="dash-insight-label">Growth Index</div>
                   <div className="dash-growth-value-inline">{fmtRs(stats.totalPurchasesFY)}</div>
-                  {/* TODO: replace with month-over-month growth chart */}
                   <svg className="dash-growth-chart" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true">
                     <defs>
                       <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
@@ -426,28 +473,33 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
           {/* Right sidebar */}
           <aside className="dash-right-sidebar">
 
+            {/* Fiscal Period card — real data from stats endpoint */}
             <div className="dash-card">
               <div className="dash-fiscal-header">
                 <span className="dash-fiscal-eyebrow">Fiscal Period</span>
                 <div className="dash-fiscal-cal-icon"><CalendarIcon /></div>
               </div>
-              <div className="dash-fiscal-fy">FY {MOCK_FISCAL.label}</div>
-              <div className="dash-fiscal-range">{MOCK_FISCAL.range}</div>
+              <div className="dash-fiscal-fy">FY {stats.fiscal?.label ?? '—'}</div>
+              <div className="dash-fiscal-range">{stats.fiscal?.range ?? 'Shrawan — Ashad'}</div>
               <div className="dash-fiscal-progress-section">
                 <div className="dash-fiscal-progress-label">
                   <span>Progress</span>
-                  <span>{MOCK_FISCAL.progress}%</span>
+                  <span>{stats.fiscal?.progress ?? 0}%</span>
                 </div>
                 <div className="dash-progress-track">
-                  <div className="dash-progress-bar" style={{ width: `${MOCK_FISCAL.progress}%` }} />
+                  <div className="dash-progress-bar" style={{ width: `${stats.fiscal?.progress ?? 0}%` }} />
                 </div>
               </div>
             </div>
 
+            {/* Spend by Supplier — real data from supplier_balances */}
             <div className="dash-card">
               <div className="dash-section-label">Spend by Supplier</div>
               <div className="dash-supplier-list">
-                {MOCK_SUPPLIERS.map((s, i) => (
+                {supplierBalances.length === 0 && !loadingData && (
+                  <p style={{ fontSize: 12, color: 'var(--dm)', margin: '8px 0' }}>No purchase data yet.</p>
+                )}
+                {supplierBalances.map((s, i) => (
                   <div key={i} className="dash-supplier-row">
                     <div className={`dash-supplier-avatar dash-supplier-avatar-${i === 0 ? 'primary' : 'secondary'}`}>{s.initial}</div>
                     <div className="dash-supplier-info">
@@ -462,13 +514,15 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   </div>
                 ))}
               </div>
-              <button className="dash-manage-suppliers-btn">Manage All Suppliers</button>
+              <button className="dash-manage-suppliers-btn" onClick={() => handleNavClick('suppliers')}>
+                Manage All Suppliers
+              </button>
             </div>
 
             <div className="dash-card dash-action-card">
               <div className="dash-action-icon"><PlusIcon /></div>
               <h5 className="dash-action-title">New Purchase</h5>
-              <p className="dash-action-body">Log a new purchase invoice or payment in seconds.</p>
+              <p className="dash-action-body">Log a new purchase invoice in seconds.</p>
               <button className="dash-action-btn" onClick={() => setShowEntryForm(true)}>
                 Add Entry Now
               </button>

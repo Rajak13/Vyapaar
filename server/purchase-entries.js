@@ -168,25 +168,73 @@ router.get('/suppliers/:id/balance', async (req, res) => {
 
 // GET /api/purchase-entries/stats — summary numbers for the dashboard
 // MUST be defined before GET /purchase-entries to avoid being shadowed
-router.get('/purchase-entries/stats', async (req, res) => {
+router.get('/purchase-entries/stats', async (_req, res) => {
   try {
-    const [totalsRow, suppliersRow, currentMonthRow] = await Promise.all([
-      // Total purchases this fiscal year (all time for now — update when fiscal_periods is populated)
-      pool.query(`SELECT COALESCE(SUM(grand_total), 0) AS total_fy,
-                         COALESCE(SUM(grand_total) FILTER (WHERE date_ad >= date_trunc('month', now())), 0) AS total_month
+    const [totalsRow, suppliersRow, currentMonthRow, fiscalRow] = await Promise.all([
+      // Total purchases + tax this fiscal year and current month
+      pool.query(`SELECT
+                    COALESCE(SUM(grand_total), 0)  AS total_fy,
+                    COALESCE(SUM(grand_total) FILTER (WHERE date_ad >= date_trunc('month', now())), 0) AS total_month,
+                    COALESCE(SUM(tax_amount),  0)  AS tax_total
                   FROM purchase_entries`),
       // Active supplier count
       pool.query(`SELECT COUNT(*) FROM suppliers WHERE is_active = true`),
-      // Entries this month
+      // Entries this calendar month
       pool.query(`SELECT COUNT(*) FROM purchase_entries
                   WHERE date_ad >= date_trunc('month', now())`),
+      // Current fiscal period — match today's BS month (derived from AD date)
+      // We use EXTRACT month from today; BS month ≈ AD month + 3 (rough, good enough for progress)
+      pool.query(`SELECT
+                    fp.fiscal_year_bs,
+                    fp.bs_year,
+                    fp.bs_month,
+                    fp.fiscal_month_index,
+                    COUNT(pe.id) AS entry_count
+                  FROM fiscal_periods fp
+                  LEFT JOIN purchase_entries pe ON pe.fiscal_period_id = fp.id
+                  WHERE fp.bs_year = (
+                    SELECT bs_year FROM fiscal_periods
+                    ORDER BY ABS(bs_year * 12 + bs_month - (EXTRACT(YEAR FROM now())::int * 12 + EXTRACT(MONTH FROM now())::int + 3))
+                    LIMIT 1
+                  )
+                  GROUP BY fp.id, fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
+                  ORDER BY fp.fiscal_month_index
+                  LIMIT 12`),
     ])
+
+    // Build fiscal period summary from the returned rows
+    const fpRows = fiscalRow.rows
+    const fiscalYearBs = fpRows[0]?.fiscal_year_bs ?? null
+    // Progress: current fiscal_month_index / 12
+    // Find the row closest to today's BS month
+    const todayAdMonth  = new Date().getMonth() + 1         // 1–12
+    const approxBsMonth = ((todayAdMonth + 2) % 12) + 1    // rough BS month
+    const currentFpRow  = fpRows.reduce((best, row) => {
+      if (!best) return row
+      return Math.abs(row.bs_month - approxBsMonth) < Math.abs(best.bs_month - approxBsMonth) ? row : best
+    }, null)
+    const fiscalProgress = currentFpRow
+      ? Math.round((currentFpRow.fiscal_month_index / 12) * 100)
+      : 0
+
+    // Month names for range label (BS months 4–12 = Shrawan–Chaitra, 1–3 = Baisakh–Ashad)
+    const BS_MONTHS = ['','Baisakh','Jestha','Ashad','Shrawan','Bhadra','Ashwin',
+                       'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
+    const firstMonth = fpRows[0]  ? BS_MONTHS[fpRows[0].bs_month]  ?? '' : 'Shrawan'
+    const lastMonth  = fpRows[fpRows.length - 1] ? BS_MONTHS[fpRows[fpRows.length - 1].bs_month] ?? '' : 'Ashad'
+    const fiscalRange = `${firstMonth} — ${lastMonth}`
 
     return res.json({
       totalPurchasesFY:    totalsRow.rows[0].total_fy,
       totalPurchasesMonth: totalsRow.rows[0].total_month,
+      taxTotal:            totalsRow.rows[0].tax_total,
       activeSuppliers:     parseInt(suppliersRow.rows[0].count, 10),
       entriesThisMonth:    parseInt(currentMonthRow.rows[0].count, 10),
+      fiscal: fiscalYearBs ? {
+        label:    fiscalYearBs,
+        range:    fiscalRange,
+        progress: fiscalProgress,
+      } : null,
     })
   } catch (err) {
     console.error('[GET /api/purchase-entries/stats]', err)

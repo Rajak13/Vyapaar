@@ -68,6 +68,7 @@
 
 /* Search */
 .dash-search {
+  position: relative;
   display: flex; align-items: center; gap: 8px;
   background: var(--dc);
   border: 1px solid rgba(0,0,0,0.06);
@@ -409,8 +410,10 @@
   border: 1px solid transparent;
 }
 .dash-badge-paid    { background: #ECFDF5; color: #065F46; border-color: #D1FAE5; }
+.dash-badge-partial { background: #FFF7ED; color: #92400E; border-color: #FED7AA; }
 .dash-badge-pending { background: #FFFBEB; color: #92400E; border-color: #FEF3C7; }
 .dash-page.app-dark .dash-badge-paid    { background: rgba(6,95,70,0.2);   color: #6ee7b7; border-color: rgba(6,95,70,0.3); }
+.dash-page.app-dark .dash-badge-partial { background: rgba(234,88,12,0.15); color: #fdba74; border-color: rgba(234,88,12,0.3); }
 .dash-page.app-dark .dash-badge-pending { background: rgba(146,64,14,0.2); color: #fbbf24; border-color: rgba(146,64,14,0.3); }
 
 .dash-table-footer {
@@ -675,4 +678,38 @@
   .dash-page.app-dark .dash-mobile-nav-btn.active::before {
     background: #eb5e28;
   }
+}
+
+/* ── Search bar clear button ── */
+.dash-search { position: relative; }
+.dash-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: var(--dm);
+  color: var(--dc);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  padding: 0;
+}
+.dash-search-clear:hover { opacity: 1; }
+
+/* ── Badge ── */
+.dash-badge {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
