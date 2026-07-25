@@ -2,7 +2,6 @@
  * Purchase Entries + Suppliers API
  * Mounted at /api in server/index.js
  * All routes protected with requireAuth middleware.
- * Every query is scoped by req.user.id for full multi-tenant isolation.
  */
 
 import { Router } from 'express'
@@ -23,60 +22,18 @@ function parseNumeric(val) {
   return isNaN(n) ? null : n
 }
 
-/**
- * Auto-seed fiscal periods for a user if they have none.
- * Seeds both 2082/083 and 2083/084 (Nepal fiscal year starts Shrawan = month 4).
- *   Fiscal year X/Y:  months 4–12 of BS year X, then months 1–3 of BS year Y
- *   fiscal_month_index: 1=Shrawan … 9=Chaitra, 10=Baisakh, 11=Jestha, 12=Ashad
- */
-async function ensureFiscalPeriods(userId) {
-  const { rows } = await pool.query(
-    `SELECT COUNT(*) FROM fiscal_periods WHERE user_id = $1`,
-    [userId]
-  )
-  if (parseInt(rows[0].count, 10) > 0) return // already seeded
-
-  const fiscalYears = [
-    { label: '2082/083', startBsYear: 2082 },
-    { label: '2083/084', startBsYear: 2083 },
-  ]
-
-  for (const fy of fiscalYears) {
-    const { startBsYear } = fy
-    // Months 4–12 of startBsYear  (index 1–9)
-    for (let m = 4; m <= 12; m++) {
-      await pool.query(
-        `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (user_id, bs_year, bs_month) DO NOTHING`,
-        [fy.label, startBsYear, m, m - 3, userId]
-      )
-    }
-    // Months 1–3 of startBsYear+1  (index 10–12)
-    for (let m = 1; m <= 3; m++) {
-      await pool.query(
-        `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (user_id, bs_year, bs_month) DO NOTHING`,
-        [fy.label, startBsYear + 1, m, m + 9, userId]
-      )
-    }
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/suppliers — list all active suppliers for this user
-router.get('/suppliers', async (req, res) => {
+// GET /api/suppliers — list all active suppliers for autocomplete
+router.get('/suppliers', async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, name, pan, phone, address
        FROM suppliers
-       WHERE is_active = true AND user_id = $1
-       ORDER BY name ASC`,
-      [req.user.id]
+       WHERE is_active = true
+       ORDER BY name ASC`
     )
     return res.json({ suppliers: rows })
   } catch (err) {
@@ -85,7 +42,7 @@ router.get('/suppliers', async (req, res) => {
   }
 })
 
-// POST /api/suppliers — create a new supplier for this user
+// POST /api/suppliers — create a new supplier inline
 router.post('/suppliers', async (req, res) => {
   const { name, pan, phone, address } = req.body ?? {}
 
@@ -95,10 +52,10 @@ router.post('/suppliers', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO suppliers (name, pan, phone, address, user_id)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO suppliers (name, pan, phone, address)
+       VALUES ($1, $2, $3, $4)
        RETURNING id, name, pan, phone, address`,
-      [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null, req.user.id]
+      [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null]
     )
     return res.status(201).json({ supplier: rows[0] })
   } catch (err) {
@@ -107,7 +64,7 @@ router.post('/suppliers', async (req, res) => {
   }
 })
 
-// PUT /api/suppliers/:id — update supplier (scoped to user)
+// PUT /api/suppliers/:id — update supplier details
 router.put('/suppliers/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   const { name, pan, phone, address, is_active } = req.body ?? {}
@@ -120,10 +77,10 @@ router.put('/suppliers/:id', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE suppliers
        SET name = $1, pan = $2, phone = $3, address = $4, is_active = $5
-       WHERE id = $6 AND user_id = $7
+       WHERE id = $6
        RETURNING id, name, pan, phone, address, is_active`,
       [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null,
-       is_active !== undefined ? is_active : true, id, req.user.id]
+       is_active !== undefined ? is_active : true, id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
     return res.json({ supplier: rows[0] })
@@ -133,7 +90,8 @@ router.put('/suppliers/:id', async (req, res) => {
   }
 })
 
-// DELETE /api/suppliers/:id — soft delete (scoped to user)
+// DELETE /api/suppliers/:id — soft delete (set is_active to false) or hard delete?
+// We'll do a soft delete by setting is_active = false, preserving history.
 router.delete('/suppliers/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
 
@@ -141,9 +99,9 @@ router.delete('/suppliers/:id', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE suppliers
        SET is_active = false
-       WHERE id = $1 AND user_id = $2
+       WHERE id = $1
        RETURNING id`,
-      [id, req.user.id]
+      [id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
     return res.json({ message: 'Supplier deactivated.' })
@@ -153,31 +111,24 @@ router.delete('/suppliers/:id', async (req, res) => {
   }
 })
 
-// GET /api/suppliers/balances — all supplier balances for this user
-router.get('/suppliers/balances', async (req, res) => {
+// GET /api/suppliers/balances — all supplier balances from the view
+router.get('/suppliers/balances', async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
-         s.id                                                AS supplier_id,
-         s.name                                              AS supplier_name,
-         s.pan                                              AS supplier_pan,
+         sb.supplier_id,
+         sb.supplier_name,
+         sb.supplier_pan,
+         sb.total_purchased,
+         sb.total_paid,
+         sb.balance_due,
          s.phone,
          s.address,
          s.is_active,
-         s.created_at,
-         COALESCE(SUM(pe.grand_total), 0)                   AS total_purchased,
-         COALESCE(SUM(sp.amount), 0)                        AS total_paid,
-         COALESCE(SUM(pe.grand_total), 0)
-           - COALESCE(SUM(sp.amount), 0)                    AS balance_due
-       FROM suppliers s
-       LEFT JOIN purchase_entries pe
-              ON pe.supplier_id = s.id AND pe.created_by = $1
-       LEFT JOIN supplier_payments sp
-              ON sp.supplier_id = s.id AND sp.created_by = $1
-       WHERE s.user_id = $1
-       GROUP BY s.id, s.name, s.pan, s.phone, s.address, s.is_active, s.created_at
-       ORDER BY s.name ASC`,
-      [req.user.id]
+         s.created_at
+       FROM supplier_balances sb
+       JOIN suppliers s ON s.id = sb.supplier_id
+       ORDER BY sb.supplier_name ASC`
     )
     return res.json({ suppliers: rows })
   } catch (err) {
@@ -186,27 +137,26 @@ router.get('/suppliers/balances', async (req, res) => {
   }
 })
 
-// GET /api/suppliers/:id/balance — single supplier balance for this user
+// GET /api/suppliers/:id/balance — single supplier balance for overpayment check
+// MUST be defined before /suppliers/balances to avoid route shadowing issues
 router.get('/suppliers/:id/balance', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid supplier id.' })
   try {
     const { rows } = await pool.query(
       `SELECT
-         COALESCE(SUM(pe.grand_total), 0)                       AS total_purchased,
-         COALESCE((
-           SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.created_by = $2
-         ), 0)                                                   AS total_paid,
-         COALESCE(SUM(pe.grand_total), 0) - COALESCE((
-           SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.created_by = $2
-         ), 0)                                                   AS balance_due
-       FROM purchase_entries pe
-       WHERE pe.supplier_id = $1 AND pe.created_by = $2`,
-      [id, req.user.id]
+         COALESCE(sb.total_purchased, 0) AS total_purchased,
+         COALESCE(sb.total_paid,      0) AS total_paid,
+         COALESCE(sb.balance_due,     0) AS balance_due
+       FROM supplier_balances sb
+       WHERE sb.supplier_id = $1`,
+      [id]
     )
-    return res.json(rows[0] ?? { total_purchased: 0, total_paid: 0, balance_due: 0 })
+    if (rows.length === 0) {
+      // Supplier exists but has no purchases yet
+      return res.json({ total_purchased: 0, total_paid: 0, balance_due: 0 })
+    }
+    return res.json(rows[0])
   } catch (err) {
     console.error('[GET /api/suppliers/:id/balance]', err)
     return res.status(500).json({ error: 'Failed to load supplier balance.' })
@@ -217,82 +167,116 @@ router.get('/suppliers/:id/balance', async (req, res) => {
 // PURCHASE ENTRIES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/purchase-entries/stats — dashboard summary for this user
-// MUST be defined before GET /purchase-entries to avoid route shadowing
-router.get('/purchase-entries/stats', async (req, res) => {
+// GET /api/purchase-entries/stats — summary numbers for the dashboard
+// MUST be defined before GET /purchase-entries to avoid being shadowed
+router.get('/purchase-entries/stats', async (_req, res) => {
   try {
-    // Auto-seed fiscal periods if user has none
-    await ensureFiscalPeriods(req.user.id)
-
-    const userId = req.user.id
-
-    // Three independent stats in parallel
+    // Fetch the three independent stats in parallel
     const [totalsRow, suppliersRow, currentMonthRow] = await Promise.all([
-      pool.query(
-        `SELECT
-           COALESCE(SUM(grand_total), 0)  AS total_fy,
-           COALESCE(SUM(grand_total) FILTER (WHERE date_ad >= date_trunc('month', now())), 0) AS total_month,
-           COALESCE(SUM(tax_amount),  0)  AS tax_total
-         FROM purchase_entries WHERE created_by = $1`,
-        [userId]
-      ),
-      pool.query(
-        `SELECT COUNT(*) FROM suppliers WHERE is_active = true AND user_id = $1`,
-        [userId]
-      ),
-      pool.query(
-        `SELECT COUNT(*) FROM purchase_entries
-         WHERE date_ad >= date_trunc('month', now()) AND created_by = $1`,
-        [userId]
-      ),
-    ])
+      // Total purchases + tax this fiscal year and current month
+      pool.query(`SELECT
+                    COALESCE(SUM(grand_total), 0)  AS total_fy,
+                    COALESCE(SUM(grand_total) FILTER (WHERE date_ad >= date_trunc('month', now())), 0) AS total_month,
+                    COALESCE(SUM(tax_amount),  0)  AS tax_total
+                  FROM purchase_entries`),
+      // Active supplier count
+      pool.query(`SELECT COUNT(*) FROM suppliers WHERE is_active = true`),
+      // Entries this calendar month
+      pool.query(`SELECT COUNT(*) FROM purchase_entries
+                  WHERE date_ad >= date_trunc('month', now())`)
+    ]);
 
-    // Convert today's AD date to BS
-    const today = new Date()
-    const bsDate = ad2bs(today)
-    const bsYear  = bsDate.year
-    const bsMonth = bsDate.month
+    // Convert today's date to exact BS using the library
+    const today = new Date();
+    const bsDate = ad2bs(today); // Returns { year, month, day }
+    const bsYear = bsDate.year;
+    const bsMonth = bsDate.month;
 
-    // Find the fiscal period matching today's BS year/month for this user
+    // Find the fiscal period matching EXACTLY today's BS year/month
     const { rows: todayFpRows } = await pool.query(
-      `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
+      `SELECT
+         fp.fiscal_year_bs,
+         fp.bs_year,
+         fp.bs_month,
+         fp.fiscal_month_index
        FROM fiscal_periods fp
-       WHERE fp.bs_year = $1 AND fp.bs_month = $2 AND fp.user_id = $3`,
-      [bsYear, bsMonth, userId]
-    )
+       WHERE fp.bs_year = $1 AND fp.bs_month = $2`,
+      [bsYear, bsMonth]
+    );
 
-    let fiscalYearBs       = null
-    let fiscalMonthIndex   = null
-    let fiscalRows         = []
+    let fiscalYearBs = null;
+    let fiscalMonthIndex = null;
+    let fiscalRows = [];
 
     if (todayFpRows.length > 0) {
-      fiscalYearBs       = todayFpRows[0].fiscal_year_bs
-      fiscalMonthIndex   = todayFpRows[0].fiscal_month_index
+      // Exact match found - use this fiscal year
+      fiscalYearBs = todayFpRows[0].fiscal_year_bs;
+      fiscalMonthIndex = todayFpRows[0].fiscal_month_index;
 
+      // Get all 12 months of this fiscal year with entry counts
       const { rows: fps } = await pool.query(
-        `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index,
-                COUNT(pe.id) AS entry_count
+        `SELECT
+           fp.fiscal_year_bs,
+           fp.bs_year,
+           fp.bs_month,
+           fp.fiscal_month_index,
+           COUNT(pe.id) AS entry_count
          FROM fiscal_periods fp
-         LEFT JOIN purchase_entries pe
-                ON pe.fiscal_period_id = fp.id AND pe.created_by = $2
-         WHERE fp.fiscal_year_bs = $1 AND fp.user_id = $2
+         LEFT JOIN purchase_entries pe ON pe.fiscal_period_id = fp.id
+         WHERE fp.fiscal_year_bs = $1
          GROUP BY fp.id, fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
          ORDER BY fp.fiscal_month_index`,
-        [fiscalYearBs, userId]
-      )
-      fiscalRows = fps
+        [fiscalYearBs]
+      );
+      fiscalRows = fps;
+    } else {
+      // FALLBACK: Use original logic if no exact match (shouldn't happen with proper setup)
+      const [fiscalRow] = await Promise.all([
+        pool.query(`SELECT
+                      fp.fiscal_year_bs,
+                      fp.bs_year,
+                      fp.bs_month,
+                      fp.fiscal_month_index,
+                      COUNT(pe.id) AS entry_count
+                    FROM fiscal_periods fp
+                    LEFT JOIN purchase_entries pe ON pe.fiscal_period_id = fp.id
+                    WHERE fp.bs_year = (
+                      SELECT bs_year FROM fiscal_periods
+                      ORDER BY ABS(bs_year * 12 + bs_month - (EXTRACT(YEAR FROM now())::int * 12 + EXTRACT(MONTH FROM now())::int + 3))
+                      LIMIT 1
+                    )
+                    GROUP BY fp.id, fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
+                    ORDER BY fp.fiscal_month_index
+                    LIMIT 12`)
+      ]);
+      fiscalRows = fiscalRow.rows;
+      if (fiscalRows.length > 0) {
+        fiscalYearBs = fiscalRows[0].fiscal_year_bs;
+        // Find closest month using approximation (fallback behavior)
+        const todayAdMonth = today.getMonth() + 1;
+        const approxBsMonth = ((todayAdMonth + 2) % 12) + 1;
+        const currentFpRow = fiscalRows.reduce((best, row) => {
+          if (!best) return row;
+          return Math.abs(row.bs_month - approxBsMonth) < Math.abs(best.bs_month - approxBsMonth) ? row : best;
+        }, null);
+        fiscalMonthIndex = currentFpRow ? currentFpRow.fiscal_month_index : null;
+      }
     }
 
+    // Prepare BS month names for range display
     const BS_MONTHS = ['','Baisakh','Jestha','Ashad','Shrawan','Bhadra','Ashwin',
-                       'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
+                       'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
 
-    const fiscalRange = fiscalRows.length > 0
-      ? `${BS_MONTHS[fiscalRows[0].bs_month]} — ${BS_MONTHS[fiscalRows[fiscalRows.length - 1].bs_month]}`
-      : null
-    const fiscalProgress = fiscalMonthIndex !== null
-      ? Math.round((fiscalMonthIndex / 12) * 100)
-      : 0
+    // Calculate fiscal year range and progress
+    const fiscalYearLabel = fiscalYearBs ?? null;
+    const fiscalRange = fiscalRows.length > 0 ?
+      `${BS_MONTHS[fiscalRows[0].bs_month]} — ${BS_MONTHS[fiscalRows[fiscalRows.length - 1].bs_month]}` :
+      null;
+    const fiscalProgress = fiscalMonthIndex !== null ?
+      Math.round((fiscalMonthIndex / 12) * 100) :
+      0;
 
+    // Return the response
     return res.json({
       totalPurchasesFY:    Number(totalsRow.rows[0].total_fy),
       totalPurchasesMonth: Number(totalsRow.rows[0].total_month),
@@ -304,23 +288,23 @@ router.get('/purchase-entries/stats', async (req, res) => {
         range:    fiscalRange,
         progress: fiscalProgress,
       } : null,
-    })
+    });
   } catch (err) {
-    console.error('[GET /api/purchase-entries/stats]', err)
-    return res.status(500).json({ error: 'Failed to load stats.' })
+    console.error('[GET /api/purchase-entries/stats]', err);
+    return res.status(500).json({ error: 'Failed to load stats.' });
   }
 })
 
-// GET /api/purchase-entries — paginated list with optional filters (user-scoped)
+// GET /api/purchase-entries — paginated list with optional filters
+// Query params: limit, offset, supplier_id, fiscal_period_id, search, date_from, date_to
 router.get('/purchase-entries', async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit  ?? '20', 10), 100)
   const offset = parseInt(req.query.offset ?? '0', 10)
   const { supplier_id, fiscal_period_id, search, date_from, date_to } = req.query
 
-  // Always scope to this user
-  const conditions = ['pe.created_by = $1']
-  const params     = [req.user.id]
-  let   p          = 2
+  const conditions = []
+  const params     = []
+  let   p          = 1
 
   if (supplier_id) {
     conditions.push(`pe.supplier_id = $${p++}`)
@@ -344,7 +328,7 @@ router.get('/purchase-entries', async (req, res) => {
     params.push(date_to)
   }
 
-  const where = `WHERE ${conditions.join(' AND ')}`
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   params.push(limit, offset)
 
   try {
@@ -406,17 +390,31 @@ router.get('/purchase-entries', async (req, res) => {
 // POST /api/purchase-entries — create a new entry
 router.post('/purchase-entries', async (req, res) => {
   const {
-    date_bs, date_ad, invoice_no, supplier_id, supplier_name, supplier_pan,
-    account_head, tax_exempt_purchases, taxable_purchases, taxable_imports,
-    capital_taxable_purchases, tax_amount, notes, fiscal_period_id, business_profile_id,
+    date_bs,
+    date_ad,
+    invoice_no,
+    supplier_id,
+    supplier_name,
+    supplier_pan,
+    account_head,
+    tax_exempt_purchases,
+    taxable_purchases,
+    taxable_imports,
+    capital_taxable_purchases,
+    tax_amount,
+    notes,
+    fiscal_period_id,
+    business_profile_id,
   } = req.body ?? {}
 
-  if (!date_ad)             return res.status(400).json({ error: 'Date (AD) is required.' })
-  if (!invoice_no?.trim())  return res.status(400).json({ error: 'Invoice number is required.' })
+  // ── Required field validation ──────────────────────────────────────────
+  if (!date_ad) return res.status(400).json({ error: 'Date (AD) is required.' })
+  if (!invoice_no?.trim()) return res.status(400).json({ error: 'Invoice number is required.' })
   if (!supplier_id && !supplier_name?.trim()) {
     return res.status(400).json({ error: 'Supplier is required.' })
   }
 
+  // ── At least one purchase value must be > 0 ────────────────────────────
   const totalValue =
     parseNumeric(tax_exempt_purchases) +
     parseNumeric(taxable_purchases) +
@@ -426,84 +424,82 @@ router.post('/purchase-entries', async (req, res) => {
     return res.status(400).json({ error: 'At least one purchase value must be greater than zero.' })
   }
 
-  const numFields = { tax_exempt_purchases, taxable_purchases, taxable_imports, capital_taxable_purchases, tax_amount }
+  // ── Numeric validation ─────────────────────────────────────────────────
+  const numFields = {
+    tax_exempt_purchases,
+    taxable_purchases,
+    taxable_imports,
+    capital_taxable_purchases,
+    tax_amount,
+  }
   for (const [field, val] of Object.entries(numFields)) {
     const n = parseNumeric(val)
     if (n === null || n < 0) {
       return res.status(400).json({ error: `${field.replace(/_/g, ' ')} must be a non-negative number.` })
     }
   }
+  // ──────────────────────────────────────────────────────────────────────
 
   try {
-    // Resolve supplier — scoped to this user
+    // Resolve supplier — use existing ID or create new one inline
     let resolvedSupplierId = supplier_id ? parseInt(supplier_id, 10) : null
 
     if (!resolvedSupplierId && supplier_name?.trim()) {
+      // Check if supplier with this name already exists, create if not
       const existing = await pool.query(
-        `SELECT id FROM suppliers WHERE name = $1 AND user_id = $2 LIMIT 1`,
-        [supplier_name.trim(), req.user.id]
+        `SELECT id FROM suppliers WHERE name = $1 LIMIT 1`,
+        [supplier_name.trim()]
       )
       if (existing.rowCount > 0) {
         resolvedSupplierId = existing.rows[0].id
       } else {
         const { rows: newSupplier } = await pool.query(
-          `INSERT INTO suppliers (name, pan, user_id) VALUES ($1, $2, $3) RETURNING id`,
-          [supplier_name.trim(), supplier_pan?.trim() || null, req.user.id]
+          `INSERT INTO suppliers (name, pan) VALUES ($1, $2) RETURNING id`,
+          [supplier_name.trim(), supplier_pan?.trim() || null]
         )
         resolvedSupplierId = newSupplier[0].id
       }
     }
 
-    // Resolve business_profile_id — scoped to user
+    // Resolve business_profile_id — fall back to first profile if not provided
     let bpId = business_profile_id ? parseInt(business_profile_id, 10) : null
     if (!bpId) {
-      const { rows: bp } = await pool.query(
-        `SELECT id FROM business_profile WHERE user_id = $1 LIMIT 1`,
-        [req.user.id]
-      )
+      const { rows: bp } = await pool.query(`SELECT id FROM business_profile LIMIT 1`)
       bpId = bp[0]?.id ?? null
     }
     if (!bpId) {
-      return res.status(400).json({ error: 'No business profile found. Create one first in Settings.' })
+      return res.status(400).json({ error: 'No business profile found. Create one first.' })
     }
 
-    // Resolve fiscal_period_id — scoped to user
+    // Resolve fiscal_period_id — match by BS year + month derived from date_bs
     let fpId = fiscal_period_id ? parseInt(fiscal_period_id, 10) : null
     if (!fpId && date_bs) {
+      // date_bs format: 'YYYY-MM-DD' or 'YYYY-M-D' — extract year and month
       const bsParts = String(date_bs).split('-')
       const bsYear  = parseInt(bsParts[0], 10)
       const bsMonth = parseInt(bsParts[1], 10)
       if (!isNaN(bsYear) && !isNaN(bsMonth)) {
         const { rows: fp } = await pool.query(
-          `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 AND user_id = $3 LIMIT 1`,
-          [bsYear, bsMonth, req.user.id]
+          `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 LIMIT 1`,
+          [bsYear, bsMonth]
         )
         fpId = fp[0]?.id ?? null
         if (!fpId) {
-          // Auto-seed and retry
-          await ensureFiscalPeriods(req.user.id)
-          const { rows: fp2 } = await pool.query(
-            `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 AND user_id = $3 LIMIT 1`,
-            [bsYear, bsMonth, req.user.id]
-          )
-          fpId = fp2[0]?.id ?? null
-        }
-        if (!fpId) {
           return res.status(400).json({
-            error: `No fiscal period found for BS ${bsYear}/${String(bsMonth).padStart(2,'0')}. Please add it in Settings → Fiscal Periods.`,
+            error: `No fiscal period found for BS ${bsYear}/${String(bsMonth).padStart(2,'0')}. Please add it in Settings → Fiscal Periods first.`,
           })
         }
       }
     }
+    // Final fallback: first period (legacy behaviour when date_bs is missing)
     if (!fpId) {
-      const { rows: fp } = await pool.query(
-        `SELECT id FROM fiscal_periods WHERE user_id = $1 LIMIT 1`,
-        [req.user.id]
-      )
+      const { rows: fp } = await pool.query(`SELECT id FROM fiscal_periods LIMIT 1`)
       fpId = fp[0]?.id ?? null
     }
     if (!fpId) {
-      return res.status(400).json({ error: 'Could not determine fiscal period. Please set up fiscal periods in Settings first.' })
+      return res.status(400).json({
+        error: 'Could not determine fiscal period. Please set up fiscal periods in Settings first.',
+      })
     }
 
     const { rows } = await pool.query(
@@ -515,11 +511,20 @@ router.post('/purchase-entries', async (req, res) => {
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
-        bpId, fpId, date_bs ?? '', date_ad, invoice_no.trim(),
-        resolvedSupplierId, account_head?.trim() || null,
-        parseNumeric(tax_exempt_purchases), parseNumeric(taxable_purchases),
-        parseNumeric(taxable_imports), parseNumeric(capital_taxable_purchases),
-        parseNumeric(tax_amount), notes?.trim() || null, req.user.id,
+        bpId,
+        fpId,
+        date_bs ?? '',
+        date_ad,
+        invoice_no.trim(),
+        resolvedSupplierId,
+        account_head?.trim() || null,
+        parseNumeric(tax_exempt_purchases),
+        parseNumeric(taxable_purchases),
+        parseNumeric(taxable_imports),
+        parseNumeric(capital_taxable_purchases),
+        parseNumeric(tax_amount),
+        notes?.trim() || null,
+        req.user.id,
       ]
     )
 
@@ -530,83 +535,28 @@ router.post('/purchase-entries', async (req, res) => {
   }
 })
 
-// PUT /api/purchase-entries/:id — update an existing entry (scoped to user)
-router.put('/purchase-entries/:id', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) return res.status(400).json({ error: 'Invalid entry id.' })
-
-  const {
-    date_bs, date_ad, invoice_no, supplier_id,
-    account_head, tax_exempt_purchases, taxable_purchases, taxable_imports,
-    capital_taxable_purchases, tax_amount, notes, fiscal_period_id,
-  } = req.body ?? {}
-
-  if (!date_ad)            return res.status(400).json({ error: 'Date (AD) is required.' })
-  if (!invoice_no?.trim()) return res.status(400).json({ error: 'Invoice number is required.' })
-
-  const totalValue =
-    parseNumeric(tax_exempt_purchases) +
-    parseNumeric(taxable_purchases) +
-    parseNumeric(taxable_imports) +
-    parseNumeric(capital_taxable_purchases)
-  if (totalValue <= 0) {
-    return res.status(400).json({ error: 'At least one purchase value must be greater than zero.' })
-  }
-
-  try {
-    // Resolve fiscal_period_id if not provided
-    let fpId = fiscal_period_id ? parseInt(fiscal_period_id, 10) : null
-    if (!fpId && date_bs) {
-      const bsParts = String(date_bs).split('-')
-      const bsYear  = parseInt(bsParts[0], 10)
-      const bsMonth = parseInt(bsParts[1], 10)
-      if (!isNaN(bsYear) && !isNaN(bsMonth)) {
-        const { rows: fp } = await pool.query(
-          `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 AND user_id = $3 LIMIT 1`,
-          [bsYear, bsMonth, req.user.id]
-        )
-        fpId = fp[0]?.id ?? null
-      }
-    }
-
-    const { rows } = await pool.query(
-      `UPDATE purchase_entries SET
-         date_bs = $1, date_ad = $2, invoice_no = $3, supplier_id = $4,
-         account_head = $5, tax_exempt_purchases = $6, taxable_purchases = $7,
-         taxable_imports = $8, capital_taxable_purchases = $9, tax_amount = $10,
-         notes = $11, fiscal_period_id = COALESCE($12, fiscal_period_id)
-       WHERE id = $13 AND created_by = $14
-       RETURNING *`,
-      [
-        date_bs ?? '', date_ad, invoice_no.trim(),
-        supplier_id ? parseInt(supplier_id, 10) : null,
-        account_head?.trim() || null,
-        parseNumeric(tax_exempt_purchases), parseNumeric(taxable_purchases),
-        parseNumeric(taxable_imports), parseNumeric(capital_taxable_purchases),
-        parseNumeric(tax_amount), notes?.trim() || null,
-        fpId, id, req.user.id,
-      ]
-    )
-    if (rows.length === 0) return res.status(404).json({ error: 'Purchase entry not found.' })
-    return res.json({ entry: rows[0] })
-  } catch (err) {
-    console.error('[PUT /api/purchase-entries/:id]', err)
-    return res.status(500).json({ error: 'Failed to update purchase entry.' })
-  }
-})
-
-// DELETE /api/purchase-entries/:id — hard delete (scoped to user)
+// DELETE /api/purchase-entries/:id — soft delete? Actually, we might want to keep history, so we can either
+// actually delete or mark as inactive. Since there's no deleted column, we'll do a hard delete for simplicity,
+// but note that this will break any references from supplier_payments if they exist (purchase_entry_id FK).
+// For now, we'll allow hard delete and rely on the fact that supplier_payments.purchase_entry_id is nullable.
+// If we want to keep history, we could add a `deleted_at` column later. For MVP, hard delete.
 router.delete('/purchase-entries/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
 
   try {
+    // First, optionally check if there are any payments linked to this entry (if you want to restrict delete)
+    // For now, we'll allow delete and set purchase_entry_id NULL in supplier_payments? Actually FK is set to RESTRICT?
+    // Let's check the schema: purchase_entry_id INT REFERENCES purchase_entries(id) -- nullable = general credit, not tied to one invoice
+    // It does NOT specify ON DELETE behavior, so default is RESTRICT? In PostgreSQL, foreign key default is RESTRICT.
+    // So we need to either set the FK to NULL first or delete dependent rows.
+    // We'll do: set purchase_entry_id to NULL in supplier_payments for rows pointing to this entry, then delete the entry.
     await pool.query(
       `UPDATE supplier_payments SET purchase_entry_id = NULL WHERE purchase_entry_id = $1`,
       [id]
     )
     const { rows } = await pool.query(
-      `DELETE FROM purchase_entries WHERE id = $1 AND created_by = $2 RETURNING id`,
-      [id, req.user.id]
+      `DELETE FROM purchase_entries WHERE id = $1 RETURNING id`,
+      [id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Purchase entry not found.' })
     return res.json({ message: 'Purchase entry deleted.' })
@@ -622,30 +572,30 @@ router.delete('/purchase-entries/:id', async (req, res) => {
 
 const VALID_METHODS = ['cash', 'online', 'cheque']
 
-// GET /api/supplier-payments — list payments for this user
+// GET /api/supplier-payments — list payments, optional ?supplier_id= filter
 router.get('/supplier-payments', async (req, res) => {
   const { supplier_id } = req.query
   const limit  = Math.min(parseInt(req.query.limit  ?? '50', 10), 200)
   const offset = parseInt(req.query.offset ?? '0', 10)
-
-  const conditions = ['sp.created_by = $1']
-  const params     = [req.user.id]
-  let p = 2
-
-  if (supplier_id) {
-    conditions.push(`sp.supplier_id = $${p++}`)
-    params.push(parseInt(supplier_id, 10))
-  }
-
-  const where = `WHERE ${conditions.join(' AND ')}`
+  const params = []
+  let p = 1
+  const where = supplier_id ? `WHERE sp.supplier_id = $${p++}` : ''
+  if (supplier_id) params.push(parseInt(supplier_id, 10))
   params.push(limit, offset)
 
   try {
     const { rows } = await pool.query(
       `SELECT
-         sp.id, sp.supplier_id, sp.purchase_entry_id,
-         sp.date_bs, sp.date_ad, sp.amount,
-         sp.payment_method, sp.reference_no, sp.notes, sp.created_at,
+         sp.id,
+         sp.supplier_id,
+         sp.purchase_entry_id,
+         sp.date_bs,
+         sp.date_ad,
+         sp.amount,
+         sp.payment_method,
+         sp.reference_no,
+         sp.notes,
+         sp.created_at,
          s.name  AS supplier_name,
          pe.invoice_no
        FROM supplier_payments sp
@@ -656,7 +606,7 @@ router.get('/supplier-payments', async (req, res) => {
        LIMIT $${p} OFFSET $${p + 1}`,
       params
     )
-    const countParams = params.slice(0, -2)
+    const countParams = supplier_id ? [parseInt(supplier_id, 10)] : []
     const { rows: cr } = await pool.query(
       `SELECT COUNT(*) FROM supplier_payments sp ${where}`,
       countParams
@@ -676,6 +626,7 @@ router.post('/supplier-payments', async (req, res) => {
     payment_method, reference_no, notes,
   } = req.body ?? {}
 
+  // Validation
   if (!supplier_id)    return res.status(400).json({ error: 'Supplier is required.' })
   if (!date_ad)        return res.status(400).json({ error: 'Date (AD) is required.' })
   if (!date_bs)        return res.status(400).json({ error: 'Date (BS) is required.' })
@@ -698,8 +649,12 @@ router.post('/supplier-payments', async (req, res) => {
       [
         parseInt(supplier_id, 10),
         purchase_entry_id ? parseInt(purchase_entry_id, 10) : null,
-        date_bs, date_ad, amt, payment_method,
-        reference_no?.trim() || null, notes?.trim() || null,
+        date_bs,
+        date_ad,
+        amt,
+        payment_method,
+        reference_no?.trim() || null,
+        notes?.trim() || null,
         req.user.id,
       ]
     )
@@ -710,14 +665,14 @@ router.post('/supplier-payments', async (req, res) => {
   }
 })
 
-// DELETE /api/supplier-payments/:id — hard delete (scoped to user)
+// DELETE /api/supplier-payments/:id — hard delete a payment record
 router.delete('/supplier-payments/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid payment id.' })
   try {
     const { rows } = await pool.query(
-      `DELETE FROM supplier_payments WHERE id = $1 AND created_by = $2 RETURNING id`,
-      [id, req.user.id]
+      `DELETE FROM supplier_payments WHERE id = $1 RETURNING id`,
+      [id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Payment not found.' })
     return res.json({ message: 'Payment deleted.' })
@@ -727,8 +682,8 @@ router.delete('/supplier-payments/:id', async (req, res) => {
   }
 })
 
-// GET /api/supplier-payments/stats — totals for this user
-router.get('/supplier-payments/stats', async (req, res) => {
+// GET /api/supplier-payments/stats — total paid across all suppliers
+router.get('/supplier-payments/stats', async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
@@ -736,8 +691,7 @@ router.get('/supplier-payments/stats', async (req, res) => {
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cash'),    0) AS paid_cash,
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'online'),  0) AS paid_online,
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cheque'),  0) AS paid_cheque
-       FROM supplier_payments WHERE created_by = $1`,
-      [req.user.id]
+       FROM supplier_payments`
     )
     return res.json(rows[0])
   } catch (err) {
@@ -747,16 +701,13 @@ router.get('/supplier-payments/stats', async (req, res) => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SETTINGS — business profile + fiscal periods (user-scoped)
+// SETTINGS — business profile + fiscal periods
 // ═══════════════════════════════════════════════════════════════════════════
 
 // GET /api/settings/business-profile
-router.get('/settings/business-profile', async (req, res) => {
+router.get('/settings/business-profile', async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM business_profile WHERE user_id = $1 LIMIT 1`,
-      [req.user.id]
-    )
+    const { rows } = await pool.query(`SELECT * FROM business_profile LIMIT 1`)
     return res.json({ profile: rows[0] ?? null })
   } catch (err) {
     console.error('[GET /api/settings/business-profile]', err)
@@ -771,27 +722,21 @@ router.put('/settings/business-profile', async (req, res) => {
     return res.status(400).json({ error: 'Taxpayer name is required.' })
   }
   try {
-    const existing = await pool.query(
-      `SELECT id FROM business_profile WHERE user_id = $1 LIMIT 1`,
-      [req.user.id]
-    )
+    // Upsert — update if exists, insert if not
+    const existing = await pool.query(`SELECT id FROM business_profile LIMIT 1`)
     let row
     if (existing.rowCount > 0) {
       const { rows } = await pool.query(
-        `UPDATE business_profile
-         SET taxpayer_name=$1, taxpayer_registration_no=$2, pan=$3, address=$4
-         WHERE id=$5 AND user_id=$6 RETURNING *`,
-        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null,
-         pan?.trim()||null, address?.trim()||null,
-         existing.rows[0].id, req.user.id]
+        `UPDATE business_profile SET taxpayer_name=$1, taxpayer_registration_no=$2, pan=$3, address=$4
+         WHERE id=$5 RETURNING *`,
+        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null, pan?.trim()||null, address?.trim()||null, existing.rows[0].id]
       )
       row = rows[0]
     } else {
       const { rows } = await pool.query(
-        `INSERT INTO business_profile (taxpayer_name, taxpayer_registration_no, pan, address, user_id)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null,
-         pan?.trim()||null, address?.trim()||null, req.user.id]
+        `INSERT INTO business_profile (taxpayer_name, taxpayer_registration_no, pan, address)
+         VALUES ($1,$2,$3,$4) RETURNING *`,
+        [taxpayer_name.trim(), taxpayer_registration_no?.trim()||null, pan?.trim()||null, address?.trim()||null]
       )
       row = rows[0]
     }
@@ -802,13 +747,11 @@ router.put('/settings/business-profile', async (req, res) => {
   }
 })
 
-// GET /api/fiscal-periods — list all for this user
-router.get('/fiscal-periods', async (req, res) => {
+// GET /api/fiscal-periods — list all
+router.get('/fiscal-periods', async (_req, res) => {
   try {
-    await ensureFiscalPeriods(req.user.id)
     const { rows } = await pool.query(
-      `SELECT * FROM fiscal_periods WHERE user_id = $1 ORDER BY bs_year DESC, bs_month DESC`,
-      [req.user.id]
+      `SELECT * FROM fiscal_periods ORDER BY bs_year DESC, bs_month DESC`
     )
     return res.json({ periods: rows })
   } catch (err) {
@@ -817,7 +760,7 @@ router.get('/fiscal-periods', async (req, res) => {
   }
 })
 
-// POST /api/fiscal-periods — create new period for this user
+// POST /api/fiscal-periods — create new period
 router.post('/fiscal-periods', async (req, res) => {
   const { fiscal_year_bs, bs_year, bs_month, fiscal_month_index } = req.body ?? {}
   if (!fiscal_year_bs || !bs_year || !bs_month || !fiscal_month_index) {
@@ -825,12 +768,11 @@ router.post('/fiscal-periods', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (user_id, bs_year, bs_month) DO UPDATE
+      `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index)
+       VALUES ($1,$2,$3,$4) ON CONFLICT (bs_year, bs_month) DO UPDATE
        SET fiscal_year_bs=EXCLUDED.fiscal_year_bs, fiscal_month_index=EXCLUDED.fiscal_month_index
        RETURNING *`,
-      [fiscal_year_bs, parseInt(bs_year,10), parseInt(bs_month,10), parseInt(fiscal_month_index,10), req.user.id]
+      [fiscal_year_bs, parseInt(bs_year,10), parseInt(bs_month,10), parseInt(fiscal_month_index,10)]
     )
     return res.status(201).json({ period: rows[0] })
   } catch (err) {

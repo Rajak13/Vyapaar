@@ -182,6 +182,13 @@
   padding-top: 4px;
 }
 
+@media (max-width: 768px) {
+  .dash-main {
+    /* Clear the 56px bottom nav + safe-area so last card is always reachable */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Welcome row */
 .dash-welcome-row {
   display: flex;

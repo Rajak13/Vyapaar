@@ -401,9 +401,14 @@
 @media (max-width: 768px) {
   .sup-page           { padding: 20px 16px 40px; gap: 12px; }
   .sup-summary-row    { grid-template-columns: 1fr 1fr; }
-  .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 92vh; animation-name: sup-slide-up; }
+
+  /* Panel slides up from above the bottom nav (not behind it) */
+  .sup-overlay        { align-items: flex-end; justify-content: center; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 80vh; animation-name: sup-slide-up; }
   @keyframes sup-slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  .sup-overlay        { align-items: flex-end; justify-content: center; }
+
+  /* Extra bottom breathing room so FAB doesn't cover last row */
+  .sup-page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   /* Hide header button on mobile — replaced by FAB */
   .sup-header .sup-btn-primary { display: none; }
@@ -414,7 +419,7 @@
     align-items: center;
     gap: 6px;
     position: fixed;
-    bottom: 72px; /* sits above the 56px mobile nav bar */
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     right: 18px;
     z-index: 120;
     background: #ab2f00;

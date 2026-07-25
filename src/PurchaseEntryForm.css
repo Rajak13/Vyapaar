@@ -376,12 +376,14 @@
   .pef-overlay {
     align-items: flex-end;
     justify-content: center;
+    /* Sit above the bottom nav bar */
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 
   .pef-panel {
     max-width: 100%;
     height: auto;
-    max-height: 92vh;
+    max-height: 80vh;
     border-left: none;
     border-top: 1px solid rgba(204, 197, 185, 0.1);
     border-radius: 20px 20px 0 0;

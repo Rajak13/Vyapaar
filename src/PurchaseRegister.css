@@ -346,7 +346,7 @@
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .pr-page { padding: 20px 16px 40px; gap: 12px; }
+  .pr-page { padding: 20px 16px calc(80px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
   .pr-header { flex-direction: column; gap: 12px; }
   .pr-header-actions { width: 100%; justify-content: flex-end; }
 }
