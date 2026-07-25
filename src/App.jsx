@@ -70,16 +70,26 @@ function UserPlusIcon() {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('vyapaar_theme') || 'dark'
+  })
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [sessionChecked, setSessionChecked] = useState(false)
 
-  // On every page load, check if a valid session cookie exists.
-  // If it does, restore the user and go straight to the dashboard.
+  function handleThemeChange(newTheme) {
+    setTheme(newTheme)
+    localStorage.setItem('vyapaar_theme', newTheme)
+  }
+
+  // On every page load, check if a valid session cookie or token exists.
   useEffect(() => {
-    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
+    const token = localStorage.getItem('vyapaaar_token')
+    const headers = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    fetch(`${API_URL}/auth/me`, { credentials: 'include', headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.user) setUser(data.user)
@@ -99,15 +109,21 @@ export default function App() {
     setToast({ message, type })
   }
 
-  // Called by AuthModal on success — receives the user object from the API response
-  function handleAuthSuccess(msg, loggedInUser) {
+  // Called by AuthModal on success — receives the user object and token from API response
+  function handleAuthSuccess(msg, loggedInUser, token) {
+    if (token) localStorage.setItem('vyapaaar_token', token)
     queryClient.clear()
     setUser(loggedInUser)
     showToast(msg, 'success')
   }
 
   function handleLogout() {
-    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
+    const token = localStorage.getItem('vyapaaar_token')
+    const headers = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers })
+    localStorage.removeItem('vyapaaar_token')
     sessionStorage.removeItem('vyapaar_nav')
     queryClient.clear()
     setUser(null)
@@ -118,7 +134,7 @@ export default function App() {
   if (user) {
     return (
       <>
-        <Dashboard user={user} theme={theme} onThemeChange={setTheme} onLogout={handleLogout} onToast={showToast} />
+        <Dashboard user={user} theme={theme} onThemeChange={handleThemeChange} onLogout={handleLogout} onToast={showToast} />
         {toast && (
           <Toast
             message={toast.message}

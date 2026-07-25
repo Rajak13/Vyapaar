@@ -64,6 +64,7 @@ function setCookieAndRespond(res, req, user) {
 
   return res.json({
     user: { id: user.id, email: user.email, full_name: user.full_name },
+    token,
   })
 }
 
@@ -159,7 +160,11 @@ router.post('/logout', (_req, res) => {
 // Returns the currently authenticated user, or 401.
 // Used by the frontend to check session on page load.
 router.get('/me', async (req, res) => {
-  const token = req.cookies?.vyapaaar_token
+  let token = req.cookies?.vyapaaar_token
+  if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1]
+  }
+
   if (!token) return res.status(401).json({ error: 'Not authenticated.' })
 
   try {

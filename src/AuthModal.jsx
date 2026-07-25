@@ -71,8 +71,9 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
       // on an already-unmounted component when App switches to Dashboard.
       onClose()
       onSuccess(
-        tab === 'login' ? 'Welcome back!' : 'Account created! Welcome to Vyapaar.',
-        json.user
+        tab === 'login' ? 'Logged in successfully.' : 'Account created successfully.',
+        json.user,
+        json.token
       )
     } catch {
       setError('Could not reach the server. Check your connection.')

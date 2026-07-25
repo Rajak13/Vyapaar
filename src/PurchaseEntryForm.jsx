@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { authHeaders } from './api'
 import './PurchaseEntryForm.css'
 import { adToBs } from './adToBs.js'
 
@@ -89,7 +90,7 @@ function SupplierSearch({ selected, onSelect, error }) {
   const allRef   = useRef([])
 
   useEffect(() => {
-    fetch(`${API_URL}/api/suppliers`, { credentials: 'include' })
+    fetch(`${API_URL}/api/suppliers`, { credentials: 'include', headers: authHeaders() })
       .then(r => r.ok ? r.json() : { suppliers: [] })
       .then(j => { allRef.current = j.suppliers ?? [] })
       .catch(() => {})
@@ -236,7 +237,12 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     const method = isEdit ? 'PUT' : 'POST'
 
     try {
-      const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
+      const res  = await fetch(url, {
+        method,
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) { setErrs({ _global: json.error ?? 'Something went wrong.' }); setLoading(false); return }
       onSuccess(isEdit ? 'Entry updated.' : 'Purchase entry added successfully.')

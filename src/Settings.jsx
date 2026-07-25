@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authHeaders } from './api'
 import './Settings.css'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -48,8 +49,8 @@ export default function Settings({ user, onToast }) {
       setLoading(true)
       try {
         const [profileRes, periodsRes] = await Promise.all([
-          fetch(`${API_URL}/api/settings/business-profile`, { credentials: 'include' }),
-          fetch(`${API_URL}/api/fiscal-periods`, { credentials: 'include' })
+          fetch(`${API_URL}/api/settings/business-profile`, { credentials: 'include', headers: authHeaders() }),
+          fetch(`${API_URL}/api/fiscal-periods`, { credentials: 'include', headers: authHeaders() })
         ])
 
         if (profileRes.ok) {
@@ -99,7 +100,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/settings/business-profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         credentials: 'include',
         body: JSON.stringify(businessProfile)
       })
@@ -124,7 +125,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/fiscal-periods`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         credentials: 'include',
         body: JSON.stringify(newFiscalPeriod)
       })
@@ -132,7 +133,8 @@ export default function Settings({ user, onToast }) {
         if (onToast) onToast('Fiscal period added successfully.', 'success')
         // Refresh the fiscal periods list
         const periodsRes = await fetch(`${API_URL}/api/fiscal-periods`, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: authHeaders()
         })
         if (periodsRes.ok) {
           const periodsData = await periodsRes.json()

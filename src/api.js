@@ -5,8 +5,19 @@
 
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
-export async function apiFetch(path) {
-  const res  = await fetch(`${BASE}${path}`, { credentials: 'include' })
+export function authHeaders(extra = {}) {
+  const token = localStorage.getItem('vyapaaar_token')
+  const headers = { ...extra }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return headers
+}
+
+export async function apiFetch(path, options = {}) {
+  const res  = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    ...options,
+    headers: authHeaders(options.headers),
+  })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`)
   return json
