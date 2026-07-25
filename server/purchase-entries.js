@@ -8,7 +8,19 @@
 import { Router } from 'express'
 import { pool } from './routes.js'
 import { requireAuth } from './middleware.js'
-// import { ad2bs } from 'nepali-date-converter'
+import nepaliDatePkg from 'nepali-date-converter'
+
+const NepaliDate = nepaliDatePkg.default || nepaliDatePkg
+
+function getBsDate(date = new Date()) {
+  try {
+    const d = new NepaliDate(date)
+    return { year: d.getYear(), month: d.getMonth() + 1, day: d.getDate() }
+  } catch {
+    const d = new NepaliDate(new Date())
+    return { year: d.getYear(), month: d.getMonth() + 1, day: d.getDate() }
+  }
+}
 
 const router = Router()
 
@@ -233,15 +245,35 @@ router.get('/purchase-entries/stats', async (req, res) => {
 
     const userId = req.user.id
 
-    // Three independent stats in parallel
+    // Convert today's AD date to BS
+    const today = new Date()
+    const bsDate = getBsDate(today)
+    const bsYear  = bsDate.year
+    const bsMonth = bsDate.month
+
+    // Find the fiscal period matching today's BS year/month for this user
+    const { rows: todayFpRows } = await pool.query(
+      `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
+       FROM fiscal_periods fp
+       WHERE fp.bs_year = $1 AND fp.bs_month = $2 AND fp.user_id = $3`,
+      [bsYear, bsMonth, userId]
+    )
+
+    let fiscalYearBs       = todayFpRows[0]?.fiscal_year_bs || '2083/084'
+    let fiscalMonthIndex   = todayFpRows[0]?.fiscal_month_index || 1
+    let fiscalRows         = []
+
+    // Fetch stats for the current fiscal year & month
     const [totalsRow, suppliersRow, currentMonthRow] = await Promise.all([
       pool.query(
         `SELECT
-           COALESCE(SUM(grand_total), 0)  AS total_fy,
-           COALESCE(SUM(grand_total) FILTER (WHERE date_ad >= date_trunc('month', now())), 0) AS total_month,
-           COALESCE(SUM(tax_amount),  0)  AS tax_total
-         FROM purchase_entries WHERE created_by = $1`,
-        [userId]
+           COALESCE(SUM(pe.grand_total), 0)  AS total_fy,
+           COALESCE(SUM(pe.grand_total) FILTER (WHERE pe.date_ad >= date_trunc('month', now())), 0) AS total_month,
+           COALESCE(SUM(pe.tax_amount),  0)  AS tax_total
+         FROM purchase_entries pe
+         LEFT JOIN fiscal_periods fp ON fp.id = pe.fiscal_period_id
+         WHERE pe.created_by = $1 AND (fp.fiscal_year_bs = $2 OR pe.fiscal_period_id IS NULL)`,
+        [userId, fiscalYearBs]
       ),
       pool.query(
         `SELECT COUNT(*) FROM suppliers WHERE is_active = true AND user_id = $1`,
@@ -254,28 +286,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
       ),
     ])
 
-    // Convert today's AD date to BS
-    const today = new Date()
-    const bsDate = ad2bs(today)
-    const bsYear  = bsDate.year
-    const bsMonth = bsDate.month
-
-    // Find the fiscal period matching today's BS year/month for this user
-    const { rows: todayFpRows } = await pool.query(
-      `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
-       FROM fiscal_periods fp
-       WHERE fp.bs_year = $1 AND fp.bs_month = $2 AND fp.user_id = $3`,
-      [bsYear, bsMonth, userId]
-    )
-
-    let fiscalYearBs       = null
-    let fiscalMonthIndex   = null
-    let fiscalRows         = []
-
-    if (todayFpRows.length > 0) {
-      fiscalYearBs       = todayFpRows[0].fiscal_year_bs
-      fiscalMonthIndex   = todayFpRows[0].fiscal_month_index
-
+    if (fiscalYearBs) {
       const { rows: fps } = await pool.query(
         `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index,
                 COUNT(pe.id) AS entry_count
@@ -295,7 +306,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
 
     const fiscalRange = fiscalRows.length > 0
       ? `${BS_MONTHS[fiscalRows[0].bs_month]} — ${BS_MONTHS[fiscalRows[fiscalRows.length - 1].bs_month]}`
-      : null
+      : 'Shrawan — Ashad'
     const fiscalProgress = fiscalMonthIndex !== null
       ? Math.round((fiscalMonthIndex / 12) * 100)
       : 0
