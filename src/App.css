@@ -1,0 +1,341 @@
+.hero {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  transition: background 0.25s ease;
+}
+
+.ribbon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ribbon-text {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  dominant-baseline: middle;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 32px 100px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 48px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-mark {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: inline-block;
+}
+
+.logo-word {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-ghost {
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--panel);
+  color: var(--fg);
+}
+
+/* Light mode: --panel is --taupe which is barely off cream. Use a stronger tint. */
+.app-light .btn-ghost:hover {
+  background: rgba(37, 36, 34, 0.08);
+  color: var(--ink);
+}
+
+.btn-primary {
+  background: var(--orange);
+  color: var(--ink);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: #d44e1e;
+  transform: translateY(-1px);
+}
+
+/* ── Hero — overlapping wordmark + cutout photo layout ── */
+.hero-main {
+  position: relative;
+  flex: 1;
+  min-height: 500px;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 32px;
+  padding-left: 15vw;
+}
+
+/* Wordmark: top-left, sits ABOVE the building */
+.wordmark {
+  position: relative;
+  z-index: 2;
+  font-family: 'Abril Fatface', serif;
+  font-weight: 400;
+  font-size: clamp(80px, 13vw, 160px);
+  color: var(--fg);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+/*
+  Building: centered horizontally, sits below wordmark baseline,
+  bleeds off the bottom. Wordmark text overlaps the building top.
+*/
+.hero-building {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -20%);
+  height: 85vh;
+  width: auto;
+  max-width: none;
+  display: block;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── CTA pill (bottom-left) ── */
+.cta-pill {
+  position: absolute;
+  left: 32px;
+  bottom: 32px;
+  z-index: 3;
+  background: var(--cream);
+  border-radius: 28px;
+  padding: 6px 6px 6px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cta-pill:hover {
+  background: var(--taupe);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.cta-pill span:first-child {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.2s ease;
+}
+
+.cta-arrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 15px;
+  flex-shrink: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.cta-pill:hover .cta-arrow {
+  background: #d44e1e;
+  transform: translateX(3px);
+}
+
+/* ── Light mode: pill needs real contrast against cream background ── */
+.app-light .cta-pill {
+  background: var(--ink);
+  box-shadow: 0 2px 12px rgba(37, 36, 34, 0.12);
+}
+
+.app-light .cta-pill span:first-child {
+  color: var(--cream);
+}
+
+.app-light .cta-pill:hover {
+  background: var(--brown);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 36, 34, 0.22);
+}
+
+.app-light .cta-pill:hover .cta-arrow {
+  background: var(--orange);
+  transform: translateX(3px);
+}
+
+.app-light .cta-arrow {
+  color: var(--ink);
+}
+
+.theme-toggle {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  z-index: 3;
+  background: var(--cream);
+  border: 1px solid var(--taupe);
+  border-radius: 28px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Light mode: toggle needs a border it can actually be seen against */
+.app-light .theme-toggle {
+  background: var(--cream);
+  border-color: var(--brown);
+  box-shadow: 0 2px 8px rgba(37, 36, 34, 0.08);
+}
+
+.toggle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--taupe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.toggle-btn:hover {
+  color: var(--brown);
+}
+
+.toggle-btn.active {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.toggle-btn.active:hover {
+  color: var(--cream);
+}
+
+/* Light mode: inactive toggle icons need to read against cream */
+.app-light .toggle-btn {
+  color: var(--brown);
+}
+
+.app-light .toggle-btn:hover {
+  color: var(--ink);
+  background: rgba(37, 36, 34, 0.06);
+}
+
+.app-light .toggle-btn.active {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+/* ── Light mode: building photo contrast boost ──
+   The B&W cutout reads well on dark but fades on cream.
+   A blend overlay darkens midtones without affecting the transparent cutout edges. */
+.app-light .hero-building {
+  filter: grayscale(100%) contrast(1.15) brightness(0.88);
+  mix-blend-mode: multiply;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .hero-content {
+    padding: 20px 16px 130px;
+  }
+
+  .nav-actions {
+    gap: 8px;
+  }
+
+  .hero-main {
+    min-height: 50vh;
+  }
+
+  .hero-building {
+    height: 45vh;
+  }
+
+  .wordmark {
+    font-size: clamp(52px, 14vw, 80px);
+  }
+
+  .cta-pill,
+  .theme-toggle {
+    left: 16px;
+    right: 16px;
+  }
+
+  .theme-toggle {
+    left: auto;
+  }
+}

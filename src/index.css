@@ -1,0 +1,41 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+/* When dashboard is active, let it grow to full viewport */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #ccc5b9;
+}
+
+:root {
+  --cream: #fffcf2;
+  --taupe: #ccc5b9;
+  --brown: #403d39;
+  --ink: #252422;
+  --orange: #eb5e28;
+}
+
+.app-dark {
+  --bg: var(--ink);
+  --fg: var(--cream);
+  --fg-muted: var(--taupe);
+  --panel: var(--brown);
+}
+
+.app-light {
+  --bg: var(--cream);
+  --fg: var(--ink);
+  --fg-muted: var(--brown);
+  --panel: var(--taupe);
+}

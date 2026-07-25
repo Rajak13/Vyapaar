@@ -1,0 +1,22 @@
+{
+  "name": "Vyapaar-landing",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node --watch server/index.js",
+    "dev:all": "npm run dev:server & npm run dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server:install": "cd server && npm install"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.1"
+  }
+}

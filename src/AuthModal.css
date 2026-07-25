@@ -1,0 +1,265 @@
+/* ── Auth Overlay ── */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(37, 36, 34, 0.72); /* --ink at 72% */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* panel slides in from the right, like the reference */
+}
+
+/* ── Auth Panel ── */
+.auth-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  background: #1a1917; /* slightly lighter than --ink, matches reference dark panel */
+  border-left: 1px solid rgba(204, 197, 185, 0.1); /* --taupe at 10% */
+  display: flex;
+  flex-direction: column;
+  padding: 48px 48px 40px;
+  overflow-y: auto;
+  animation: panel-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panel-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Header ── */
+.auth-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.auth-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: 0.02em;
+  color: #fffcf2; /* --cream */
+  margin: 0;
+  line-height: 1;
+}
+
+.auth-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(204, 197, 185, 0.2);
+  background: transparent;
+  color: #ccc5b9; /* --taupe */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.auth-close:hover {
+  background: rgba(204, 197, 185, 0.1);
+  color: #fffcf2;
+}
+
+/* ── Divider ── */
+.auth-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(204, 197, 185, 0.15);
+  margin-bottom: 32px;
+  border: none;
+}
+
+/* ── Tabs ── */
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(204, 197, 185, 0.12);
+}
+
+.auth-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 0 0 12px;
+  margin-right: 28px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(204, 197, 185, 0.5);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-tab:hover {
+  color: #ccc5b9;
+}
+
+.auth-tab.active {
+  color: #fffcf2;
+  border-bottom-color: #eb5e28; /* --orange */
+}
+
+/* ── Form ── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  flex: 1;
+}
+
+/* ── Field (label above input, reference style) ── */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(204, 197, 185, 0.5); /* muted taupe, exactly like reference */
+  text-transform: uppercase;
+}
+
+.auth-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(204, 197, 185, 0.25);
+  border-radius: 0;
+  padding: 10px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #fffcf2;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.auth-input::placeholder {
+  color: rgba(204, 197, 185, 0.3);
+}
+
+.auth-input:focus {
+  border-bottom-color: #eb5e28;
+}
+
+/* ── Error ── */
+.auth-error {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #eb5e28;
+  margin: -8px 0 0;
+  padding: 0;
+}
+
+/* ── Submit button — full-width bar like reference's SEND INQUIRY ── */
+.auth-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(204, 197, 185, 0.15);
+  padding: 20px 0 0;
+  margin-top: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fffcf2;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  color: #eb5e28;
+}
+
+.auth-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ── */
+.auth-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 252, 242, 0.2);
+  border-top-color: #fffcf2;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Footer switch ── */
+.auth-switch {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(204, 197, 185, 0.5);
+  margin: 28px 0 0;
+  padding: 0;
+}
+
+.auth-switch-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #fffcf2;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.auth-switch-btn:hover {
+  color: #eb5e28;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .auth-overlay {
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .auth-panel {
+    max-width: 100%;
+    height: auto;
+    max-height: 92vh;
+    border-left: none;
+    border-top: 1px solid rgba(204, 197, 185, 0.1);
+    border-radius: 20px 20px 0 0;
+    padding: 32px 24px 40px;
+    animation: panel-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes panel-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+}
