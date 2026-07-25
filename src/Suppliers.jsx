@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import './Suppliers.css'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 
 function fmtRs(val) {
   const n = parseFloat(val)

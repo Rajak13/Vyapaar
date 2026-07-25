@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import './AuthModal.css'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 
 export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) {
   const [tab, setTab] = useState(initialTab)

@@ -7,7 +7,8 @@ import Payments from './Payments'
 import Settings from './Settings'
 import { adToBs } from './adToBs.js'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static mock data kept only for values not yet backed by an endpoint

@@ -4,7 +4,8 @@ import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 const PAGE_SIZE = 20
 
 function fmtRs(val) {

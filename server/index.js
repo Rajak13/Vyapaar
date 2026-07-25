@@ -24,10 +24,26 @@ app.use(helmet())
 app.use(express.json())
 app.use(cookieParser())
 
+// Build allowed origins list from FRONTEND_URL (comma-separated for multi-env support)
+// Always strip trailing slashes — a misconfigured env var shouldn't break auth.
+const rawOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim().replace(/\/$/, ''))
+  .filter(Boolean)
+
+console.log('[CORS] Allowed origins:', rawOrigins)
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow server-to-server / curl requests with no Origin header
+    if (!origin) return callback(null, true)
+    if (rawOrigins.includes(origin)) return callback(null, true)
+    console.warn('[CORS] Blocked origin:', origin)
+    callback(new Error(`Origin ${origin} not allowed by CORS`))
+  },
   credentials: true,
 }))
+
 
 // ── Rate limiters (scoped to auth routes only) ─────────────────────────────
 const loginLimiter = rateLimit({

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import './PurchaseEntryForm.css'
 import { adToBs } from './adToBs.js'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 
 // ── Field label translations (English / Nepali) ───────────────────────────────
 const LABELS = {
