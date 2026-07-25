@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { cachedFetch, invalidateCache } from './apiCache'
 import './Suppliers.css'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -150,13 +151,20 @@ export default function Suppliers({ onToast }) {
   const [showForm,    setShowForm]    = useState(false)
   const [editTarget,  setEditTarget]  = useState(null)
   const [refreshKey,  setRefreshKey]  = useState(0)
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const refresh = useCallback(() => {
+    invalidateCache('/api/suppliers/balances', '/api/purchase-entries/stats')
+    setRefreshKey(k => k + 1)
+  }, [])
 
   useEffect(() => {
-    setLoading(true); setError('')
-    fetch(`${API_URL}/api/suppliers/balances`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(j => setSuppliers(j.suppliers ?? []))
+    const cached = cachedFetch('/api/suppliers/balances')
+    // If already cached, clear spinner immediately
+    const existing = cached // promise
+    existing
+      .then(({ data }) => {
+        setSuppliers(data?.suppliers ?? [])
+        setError('')
+      })
       .catch(() => setError('Failed to load suppliers.'))
       .finally(() => setLoading(false))
   }, [refreshKey])

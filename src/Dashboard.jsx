@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { cachedFetch, invalidateCache } from './apiCache'
 import './Dashboard.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import PurchaseRegister from './PurchaseRegister'
@@ -81,7 +82,14 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
   // ── Refresh key — increment to re-fetch all data ──────────────────────────
   const [refreshKey, setRefreshKey] = useState(0)
-  const triggerRefresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const triggerRefresh = useCallback(() => {
+    invalidateCache(
+      '/api/purchase-entries/stats',
+      '/api/purchase-entries',
+      '/api/suppliers/balances',
+    )
+    setRefreshKey(k => k + 1)
+  }, [])
 
   // ── Live data state ───────────────────────────────────────────────────────
   const [stats, setStats] = useState({
@@ -99,16 +107,17 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
   const [searchQuery,      setSearchQuery]      = useState('')   // top nav search bar
 
   useEffect(() => {
-    setLoadingData(true)
-    Promise.all([
-      fetch(`${API_URL}/api/purchase-entries/stats`, { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null),
-      fetch(`${API_URL}/api/purchase-entries?limit=5`, { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null),
-      fetch(`${API_URL}/api/suppliers/balances`, { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null),
-    ])
-      .then(([statsData, entriesData, balancesData]) => {
+    // Show cached data immediately — no spinner flash on re-navigation
+    const statsEntry    = cachedFetch('/api/purchase-entries/stats')
+    const entriesEntry  = cachedFetch('/api/purchase-entries?limit=5')
+    const balancesEntry = cachedFetch('/api/suppliers/balances')
+
+    Promise.all([statsEntry, entriesEntry, balancesEntry])
+      .then(([statsRes, entriesRes, balancesRes]) => {
+        const statsData    = statsRes.data
+        const entriesData  = entriesRes.data
+        const balancesData = balancesRes.data
+
         if (statsData) {
           const pendingPayments = balancesData?.suppliers
             ? balancesData.suppliers.reduce((sum, s) => sum + Math.max(0, parseFloat(s.balance_due ?? 0)), 0)
@@ -127,19 +136,22 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
           setEntriesTotal(entriesData.total ?? 0)
         }
         if (balancesData?.suppliers) {
-          // Top 5 by total purchased, with percentage of the highest value
           const sorted = [...balancesData.suppliers]
             .filter(s => parseFloat(s.total_purchased) > 0)
             .sort((a, b) => parseFloat(b.total_purchased) - parseFloat(a.total_purchased))
             .slice(0, 5)
           const maxAmt = parseFloat(sorted[0]?.total_purchased ?? 0)
           setSupplierBalances(sorted.map(s => ({
-            name:   s.supplier_name,
-            amount: fmtRs(s.total_purchased),
-            pct:    maxAmt > 0 ? Math.round((parseFloat(s.total_purchased) / maxAmt) * 100) : 0,
+            name:    s.supplier_name,
+            amount:  fmtRs(s.total_purchased),
+            pct:     maxAmt > 0 ? Math.round((parseFloat(s.total_purchased) / maxAmt) * 100) : 0,
             initial: s.supplier_name?.[0]?.toUpperCase() ?? '?',
           })))
         }
+
+        // Only show loading state if NONE of the responses were cached
+        const allCached = statsRes.fromCache && entriesRes.fromCache && balancesRes.fromCache
+        if (allCached) setLoadingData(false)
       })
       .catch(() => {})
       .finally(() => setLoadingData(false))

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { cachedFetch, invalidateCache } from './apiCache'
 import './Payments.css'
 import { adToBs } from './adToBs.js'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -295,27 +296,32 @@ export default function Payments({ onToast }) {
   const [showForm,    setShowForm]    = useState(false)
   const [refreshKey,  setRefreshKey]  = useState(0)
   const [selectedPayment, setSelectedPayment] = useState(null)
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const refresh = useCallback(() => {
+    invalidateCache('/api/supplier-payments', '/api/supplier-payments/stats', '/api/suppliers/balances')
+    setRefreshKey(k => k + 1)
+  }, [])
 
-  // Load supplier list for filter + form
+  // Load supplier list for filter + form (cached)
   useEffect(() => {
-    fetch(`${API_URL}/api/suppliers`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { suppliers: [] })
-      .then(j => setSuppliers(j.suppliers ?? []))
+    cachedFetch('/api/suppliers')
+      .then(({ data }) => setSuppliers(data?.suppliers ?? []))
       .catch(() => {})
   }, [])
 
-  // Load payments + stats
+  // Load payments + stats (cached for default view)
   useEffect(() => {
-    setLoading(true)
+    const isDefaultView = !suppFilter
     const params = new URLSearchParams({ limit: 50 })
     if (suppFilter) params.set('supplier_id', suppFilter)
 
-    Promise.all([
-      fetch(`${API_URL}/api/supplier-payments?${params}`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
-      fetch(`${API_URL}/api/supplier-payments/stats`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
-    ])
-      .then(([payData, statsData]) => {
+    const payPath   = `/api/supplier-payments?${params}`
+    const statsPath = '/api/supplier-payments/stats'
+
+    const payFetch   = isDefaultView ? cachedFetch(payPath)   : fetch((import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + payPath,   { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => ({ data: d }))
+    const statsFetch = isDefaultView ? cachedFetch(statsPath) : fetch((import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + statsPath, { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(d => ({ data: d }))
+
+    Promise.all([payFetch, statsFetch])
+      .then(([{ data: payData }, { data: statsData }]) => {
         if (payData) { setPayments(payData.payments ?? []); setTotal(payData.total ?? 0) }
         if (statsData) setStats(statsData)
       })

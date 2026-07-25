@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { cachedFetch, invalidateCache } from './apiCache'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -115,7 +116,10 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
 
   // ── Internal refresh ──────────────────────────────────────────────────────
   const [refreshKey, setRefreshKey]  = useState(0)
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const refresh = useCallback(() => {
+    invalidateCache('/api/purchase-entries', '/api/purchase-entries/stats')
+    setRefreshKey(k => k + 1)
+  }, [])
 
   // Debounced search
   const searchTimer = useRef(null)
@@ -126,17 +130,15 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
     searchTimer.current = setTimeout(refresh, 350)
   }
 
-  // Load supplier list for filter dropdown
+  // Load supplier list for filter dropdown (cached)
   useEffect(() => {
-    fetch(`${API_URL}/api/suppliers`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { suppliers: [] })
-      .then(j => setSuppliers(j.suppliers ?? []))
+    cachedFetch('/api/suppliers')
+      .then(({ data }) => setSuppliers(data?.suppliers ?? []))
       .catch(() => {})
   }, [])
 
   // Fetch entries when page / filters / refresh key changes
   useEffect(() => {
-    setLoading(true)
     setError('')
 
     const params = new URLSearchParams({
@@ -148,9 +150,16 @@ export default function PurchaseRegister({ theme, onToast, refreshKey: externalR
     if (dateTo)     params.set('date_to',      dateTo)
     if (search.trim()) params.set('search',    search.trim())
 
-    fetch(`${API_URL}/api/purchase-entries?${params}`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(j => { setEntries(j.entries ?? []); setTotal(j.total ?? 0) })
+    const path = `/api/purchase-entries?${params}`
+    // Cache only the default unfiltered first page — dynamic queries skip cache
+    const isDefaultView = !suppFilter && !dateFrom && !dateTo && !search.trim() && page === 0
+    const fetcher = isDefaultView ? cachedFetch(path) : fetch(
+      (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + path,
+      { credentials: 'include' }
+    ).then(r => r.ok ? r.json() : Promise.reject()).then(data => ({ data }))
+
+    fetcher
+      .then(({ data }) => { setEntries(data?.entries ?? []); setTotal(data?.total ?? 0) })
       .catch(() => setError('Failed to load entries.'))
       .finally(() => setLoading(false))
   }, [page, suppFilter, dateFrom, dateTo, refreshKey, externalRefreshKey])
