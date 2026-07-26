@@ -32,9 +32,9 @@ export function getCookieOptions() {
   const isProd = process.env.NODE_ENV === 'production'
   return {
     httpOnly: true,
-    secure:   isProd,
-    sameSite: 'lax',
-    maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    secure:   isProd,            // must be true for SameSite=none to work
+    sameSite: isProd ? 'none' : 'lax',  // 'none' allows cross-origin (Vercel → Render)
+    maxAge:   7 * 24 * 60 * 60 * 1000,
   }
 }
 
