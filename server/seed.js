@@ -12,7 +12,18 @@
 import pg      from 'pg'
 import bcrypt  from 'bcrypt'
 import dotenv  from 'dotenv'
+import crypto  from 'crypto'
 dotenv.config()
+
+// ─── Safety Guard ─────────────────────────────────────────────────────────────
+// Prevent accidental production wipes. Must set ALLOW_PROD_SEED=true explicitly.
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PROD_SEED) {
+  console.error(
+    '\n❌  REFUSED: Seed script blocked in production.\n' +
+    '    Set ALLOW_PROD_SEED=true explicitly to override.\n'
+  )
+  process.exit(1)
+}
 
 const { Pool } = pg
 const DB_URL = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
@@ -150,8 +161,10 @@ async function seed() {
     console.log('    ✓ All tables cleared\n')
 
     // ── 2. Create test user ────────────────────────────────────────────────────
-    console.log('👤  Creating user testuser123@gmail.com...')
-    const hash = await bcrypt.hash('Test123@', 12)
+    // Generate a random password at runtime — never committed to source.
+    const generatedPassword = crypto.randomBytes(12).toString('base64url')
+    console.log('👤  Creating seed user...')
+    const hash = await bcrypt.hash(generatedPassword, 12)
     const { rows: [user] } = await client.query(
       `INSERT INTO users (email, password_hash, full_name)
        VALUES ($1, $2, $3) RETURNING id`,
@@ -217,7 +230,7 @@ async function seed() {
            invoice_no, supplier_id, account_head,
            tax_exempt_purchases, taxable_purchases, taxable_imports,
            capital_taxable_purchases, tax_amount,
-           notes, created_by
+           notes, user_id
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
          RETURNING id, grand_total`,
         [
@@ -260,7 +273,7 @@ async function seed() {
         await client.query(
           `INSERT INTO supplier_payments
              (supplier_id, purchase_entry_id, date_bs, date_ad,
-              amount, payment_method, reference_no, notes, created_by)
+              amount, payment_method, reference_no, notes, user_id)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           [entry.suppId, entry.id, bsStr, adStr,
            partialAmt, method, refNo, 'Partial settlement', userId]
@@ -271,7 +284,7 @@ async function seed() {
         await client.query(
           `INSERT INTO supplier_payments
              (supplier_id, purchase_entry_id, date_bs, date_ad,
-              amount, payment_method, reference_no, notes, created_by)
+              amount, payment_method, reference_no, notes, user_id)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
           [entry.suppId, entry.id, bsStr, adStr,
            entry.grandTotal, method, refNo, 'Full payment', userId]
@@ -288,7 +301,7 @@ async function seed() {
     console.log('✅  Seed complete!')
     console.log('═══════════════════════════════════════')
     console.log(`  Email   : testuser123@gmail.com`)
-    console.log(`  Password: Test123@`)
+    console.log(`  Password: ${generatedPassword}   ← SAVE THIS — shown only once`)
     console.log(`  User ID : ${userId}`)
     console.log(`  Business: Vyapaar Trading Pvt. Ltd.`)
     console.log(`  Fiscal  : 2082/083 (12 months) + 2083 Shrawan`)

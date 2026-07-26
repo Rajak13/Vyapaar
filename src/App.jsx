@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import './App.css'
 import AuthModal from './AuthModal'
 import Toast from './Toast'
-import Dashboard from './Dashboard'
 import { queryClient } from './queryClient'
+
+// Code-split the post-login app — a logged-out visitor on the landing page
+// shouldn't download any of this code.
+const Dashboard = lazy(() => import('./Dashboard'))
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -69,6 +72,14 @@ function UserPlusIcon() {
   )
 }
 
+function AppLoader() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #0f0f0f)' }}>
+      <span className="auth-spinner" aria-label="Loading…" style={{ width: 32, height: 32, borderWidth: 3 }} />
+    </div>
+  )
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('vyapaar_theme') || 'dark'
@@ -83,13 +94,10 @@ export default function App() {
     localStorage.setItem('vyapaar_theme', newTheme)
   }
 
-  // On every page load, check if a valid session cookie or token exists.
+  // On every page load, check if a valid session cookie exists.
+  // Auth is purely cookie-based — no localStorage tokens needed.
   useEffect(() => {
-    const token = localStorage.getItem('vyapaaar_token')
-    const headers = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-
-    fetch(`${API_URL}/auth/me`, { credentials: 'include', headers })
+    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.user) setUser(data.user)
@@ -109,21 +117,15 @@ export default function App() {
     setToast({ message, type })
   }
 
-  // Called by AuthModal on success — receives the user object and token from API response
-  function handleAuthSuccess(msg, loggedInUser, token) {
-    if (token) localStorage.setItem('vyapaaar_token', token)
+  // Called by AuthModal on success — receives only the user object (no token)
+  function handleAuthSuccess(msg, loggedInUser) {
     queryClient.clear()
     setUser(loggedInUser)
     showToast(msg, 'success')
   }
 
   function handleLogout() {
-    const token = localStorage.getItem('vyapaaar_token')
-    const headers = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-
-    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers })
-    localStorage.removeItem('vyapaaar_token')
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
     sessionStorage.removeItem('vyapaar_nav')
     queryClient.clear()
     setUser(null)
@@ -134,7 +136,9 @@ export default function App() {
   if (user) {
     return (
       <>
-        <Dashboard user={user} theme={theme} onThemeChange={handleThemeChange} onLogout={handleLogout} onToast={showToast} />
+        <Suspense fallback={<AppLoader />}>
+          <Dashboard user={user} theme={theme} onThemeChange={handleThemeChange} onLogout={handleLogout} onToast={showToast} />
+        </Suspense>
         {toast && (
           <Toast
             message={toast.message}
@@ -193,7 +197,7 @@ export default function App() {
             className={theme === 'light' ? 'toggle-btn active' : 'toggle-btn'}
             aria-label="Light theme"
             aria-pressed={theme === 'light'}
-            onClick={() => setTheme('light')}
+            onClick={() => handleThemeChange('light')}
           >
             <SunIcon />
           </button>
@@ -201,7 +205,7 @@ export default function App() {
             className={theme === 'dark' ? 'toggle-btn active' : 'toggle-btn'}
             aria-label="Dark theme"
             aria-pressed={theme === 'dark'}
-            onClick={() => setTheme('dark')}
+            onClick={() => handleThemeChange('dark')}
           >
             <MoonIcon />
           </button>

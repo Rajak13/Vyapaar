@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { authHeaders } from './api'
 import './PurchaseEntryForm.css'
 import { adToBs } from './adToBs.js'
 
@@ -90,7 +89,7 @@ function SupplierSearch({ selected, onSelect, error }) {
   const allRef   = useRef([])
 
   useEffect(() => {
-    fetch(`${API_URL}/api/suppliers`, { credentials: 'include', headers: authHeaders() })
+    fetch(`${API_URL}/api/suppliers`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : { suppliers: [] })
       .then(j => { allRef.current = j.suppliers ?? [] })
       .catch(() => {})
@@ -239,7 +238,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     try {
       const res  = await fetch(url, {
         method,
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body),
       })

@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/auth/:path*", "destination": "https://vyapaar-f3pi.onrender.com/auth/:path*" },
+    { "source": "/api/:path*",  "destination": "https://vyapaar-f3pi.onrender.com/api/:path*" }
+  ]
+}

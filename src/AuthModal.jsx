@@ -72,8 +72,7 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
       onClose()
       onSuccess(
         tab === 'login' ? 'Logged in successfully.' : 'Account created successfully.',
-        json.user,
-        json.token
+        json.user
       )
     } catch {
       setError('Could not reach the server. Check your connection.')

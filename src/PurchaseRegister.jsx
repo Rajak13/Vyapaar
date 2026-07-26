@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Q, fetchSupplierList, fetchEntries, authHeaders } from './api'
+import { Q, fetchSupplierList, fetchEntries } from './api'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -161,7 +161,6 @@ export default function PurchaseRegister({ theme, onToast }) {
     fetch(`${API_URL}/api/purchase-entries/${id}`, {
       method: 'DELETE',
       credentials: 'include',
-      headers: authHeaders(),
     })
       .then(async res => {
         if (!res.ok) {

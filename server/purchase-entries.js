@@ -37,8 +37,10 @@ function parseNumeric(val) {
 
 /**
  * Auto-seed fiscal periods for a user if they have none.
- * Seeds both 2082/083 and 2083/084 (Nepal fiscal year starts Shrawan = month 4).
- *   Fiscal year X/Y:  months 4–12 of BS year X, then months 1–3 of BS year Y
+ * Computes the current fiscal year dynamically from today's BS date,
+ * then seeds that year plus the next one.
+ * Nepal fiscal year starts Shrawan (BS month 4):
+ *   FY X/Y:  months 4-12 of BS year X, then months 1-3 of BS year Y
  *   fiscal_month_index: 1=Shrawan … 9=Chaitra, 10=Baisakh, 11=Jestha, 12=Ashad
  */
 async function ensureFiscalPeriods(userId) {
@@ -48,32 +50,38 @@ async function ensureFiscalPeriods(userId) {
   )
   if (parseInt(rows[0].count, 10) > 0) return // already seeded
 
-  const fiscalYears = [
-    { label: '2082/083', startBsYear: 2082 },
-    { label: '2083/084', startBsYear: 2083 },
-  ]
+  // Determine current BS year dynamically
+  const bsNow = getBsDate()
+  // Fiscal year starts in Shrawan (month 4); if we're before Shrawan, current FY started last year
+  const currentFyStartYear = bsNow.month >= 4 ? bsNow.year : bsNow.year - 1
 
-  for (const fy of fiscalYears) {
-    const { startBsYear } = fy
-    // Months 4–12 of startBsYear  (index 1–9)
+  // Build rows for current FY and next FY
+  const inserts = []
+  for (let fyOffset = 0; fyOffset <= 1; fyOffset++) {
+    const startYear = currentFyStartYear + fyOffset
+    const endYear   = startYear + 1
+    const label     = `${startYear}/${String(endYear).slice(-3)}`
+    // Months 4-12 of startYear (fiscal_month_index 1-9)
     for (let m = 4; m <= 12; m++) {
-      await pool.query(
-        `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (user_id, bs_year, bs_month) DO NOTHING`,
-        [fy.label, startBsYear, m, m - 3, userId]
-      )
+      inserts.push([label, startYear, m, m - 3, userId])
     }
-    // Months 1–3 of startBsYear+1  (index 10–12)
+    // Months 1-3 of startYear+1 (fiscal_month_index 10-12)
     for (let m = 1; m <= 3; m++) {
-      await pool.query(
-        `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (user_id, bs_year, bs_month) DO NOTHING`,
-        [fy.label, startBsYear + 1, m, m + 9, userId]
-      )
+      inserts.push([label, endYear, m, m + 9, userId])
     }
   }
+
+  // Batch all inserts concurrently with ON CONFLICT DO NOTHING
+  await Promise.all(
+    inserts.map(([label, bsYear, bsMonth, idx, uid]) =>
+      pool.query(
+        `INSERT INTO fiscal_periods (fiscal_year_bs, bs_year, bs_month, fiscal_month_index, user_id)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (user_id, bs_year, bs_month) DO NOTHING`,
+        [label, bsYear, bsMonth, idx, uid]
+      )
+    )
+  )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -185,13 +193,13 @@ router.get('/suppliers/balances', async (req, res) => {
        LEFT JOIN (
          SELECT supplier_id, SUM(grand_total) AS total_purchased
          FROM purchase_entries
-         WHERE created_by = $1
+         WHERE user_id = $1
          GROUP BY supplier_id
        ) pe ON pe.supplier_id = s.id
        LEFT JOIN (
          SELECT supplier_id, SUM(amount) AS total_paid
          FROM supplier_payments
-         WHERE created_by = $1
+         WHERE user_id = $1
          GROUP BY supplier_id
        ) sp ON sp.supplier_id = s.id
        WHERE s.user_id = $1
@@ -215,14 +223,14 @@ router.get('/suppliers/:id/balance', async (req, res) => {
          COALESCE(SUM(pe.grand_total), 0)                       AS total_purchased,
          COALESCE((
            SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.created_by = $2
+           WHERE sp.supplier_id = $1 AND sp.user_id = $2
          ), 0)                                                   AS total_paid,
          COALESCE(SUM(pe.grand_total), 0) - COALESCE((
            SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.created_by = $2
+           WHERE sp.supplier_id = $1 AND sp.user_id = $2
          ), 0)                                                   AS balance_due
        FROM purchase_entries pe
-       WHERE pe.supplier_id = $1 AND pe.created_by = $2`,
+       WHERE pe.supplier_id = $1 AND pe.user_id = $2`,
       [id, req.user.id]
     )
     return res.json(rows[0] ?? { total_purchased: 0, total_paid: 0, balance_due: 0 })
@@ -272,7 +280,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
            COALESCE(SUM(pe.tax_amount),  0)  AS tax_total
          FROM purchase_entries pe
          LEFT JOIN fiscal_periods fp ON fp.id = pe.fiscal_period_id
-         WHERE pe.created_by = $1 AND (fp.fiscal_year_bs = $2 OR pe.fiscal_period_id IS NULL)`,
+         WHERE pe.user_id = $1 AND (fp.fiscal_year_bs = $2 OR pe.fiscal_period_id IS NULL)`,
         [userId, fiscalYearBs]
       ),
       pool.query(
@@ -281,7 +289,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
       ),
       pool.query(
         `SELECT COUNT(*) FROM purchase_entries
-         WHERE date_ad >= date_trunc('month', now()) AND created_by = $1`,
+         WHERE date_ad >= date_trunc('month', now()) AND user_id = $1`,
         [userId]
       ),
     ])
@@ -292,7 +300,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
                 COUNT(pe.id) AS entry_count
          FROM fiscal_periods fp
          LEFT JOIN purchase_entries pe
-                ON pe.fiscal_period_id = fp.id AND pe.created_by = $2
+                ON pe.fiscal_period_id = fp.id AND pe.user_id = $2
          WHERE fp.fiscal_year_bs = $1 AND fp.user_id = $2
          GROUP BY fp.id, fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index
          ORDER BY fp.fiscal_month_index`,
@@ -336,7 +344,7 @@ router.get('/purchase-entries', async (req, res) => {
   const { supplier_id, fiscal_period_id, search, date_from, date_to } = req.query
 
   // Always scope to this user
-  const conditions = ['pe.created_by = $1']
+  const conditions = ['pe.user_id = $1']
   const params     = [req.user.id]
   let   p          = 2
 
@@ -452,36 +460,35 @@ router.post('/purchase-entries', async (req, res) => {
     }
   }
 
+  const client = await pool.connect()
   try {
+    await client.query('BEGIN')
+
     // Resolve supplier — scoped to this user
     let resolvedSupplierId = supplier_id ? parseInt(supplier_id, 10) : null
 
     if (!resolvedSupplierId && supplier_name?.trim()) {
-      const existing = await pool.query(
-        `SELECT id FROM suppliers WHERE name = $1 AND user_id = $2 LIMIT 1`,
-        [supplier_name.trim(), req.user.id]
+      // ON CONFLICT ensures concurrent requests resolve to the same row
+      const { rows: newSupplier } = await client.query(
+        `INSERT INTO suppliers (name, pan, user_id) VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id`,
+        [supplier_name.trim(), supplier_pan?.trim() || null, req.user.id]
       )
-      if (existing.rowCount > 0) {
-        resolvedSupplierId = existing.rows[0].id
-      } else {
-        const { rows: newSupplier } = await pool.query(
-          `INSERT INTO suppliers (name, pan, user_id) VALUES ($1, $2, $3) RETURNING id`,
-          [supplier_name.trim(), supplier_pan?.trim() || null, req.user.id]
-        )
-        resolvedSupplierId = newSupplier[0].id
-      }
+      resolvedSupplierId = newSupplier[0].id
     }
 
     // Resolve business_profile_id — scoped to user
     let bpId = business_profile_id ? parseInt(business_profile_id, 10) : null
     if (!bpId) {
-      const { rows: bp } = await pool.query(
+      const { rows: bp } = await client.query(
         `SELECT id FROM business_profile WHERE user_id = $1 LIMIT 1`,
         [req.user.id]
       )
       bpId = bp[0]?.id ?? null
     }
     if (!bpId) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ error: 'No business profile found. Create one first in Settings.' })
     }
 
@@ -492,7 +499,7 @@ router.post('/purchase-entries', async (req, res) => {
       const bsYear  = parseInt(bsParts[0], 10)
       const bsMonth = parseInt(bsParts[1], 10)
       if (!isNaN(bsYear) && !isNaN(bsMonth)) {
-        const { rows: fp } = await pool.query(
+        const { rows: fp } = await client.query(
           `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 AND user_id = $3 LIMIT 1`,
           [bsYear, bsMonth, req.user.id]
         )
@@ -500,13 +507,14 @@ router.post('/purchase-entries', async (req, res) => {
         if (!fpId) {
           // Auto-seed and retry
           await ensureFiscalPeriods(req.user.id)
-          const { rows: fp2 } = await pool.query(
+          const { rows: fp2 } = await client.query(
             `SELECT id FROM fiscal_periods WHERE bs_year = $1 AND bs_month = $2 AND user_id = $3 LIMIT 1`,
             [bsYear, bsMonth, req.user.id]
           )
           fpId = fp2[0]?.id ?? null
         }
         if (!fpId) {
+          await client.query('ROLLBACK')
           return res.status(400).json({
             error: `No fiscal period found for BS ${bsYear}/${String(bsMonth).padStart(2,'0')}. Please add it in Settings → Fiscal Periods.`,
           })
@@ -514,22 +522,23 @@ router.post('/purchase-entries', async (req, res) => {
       }
     }
     if (!fpId) {
-      const { rows: fp } = await pool.query(
+      const { rows: fp } = await client.query(
         `SELECT id FROM fiscal_periods WHERE user_id = $1 LIMIT 1`,
         [req.user.id]
       )
       fpId = fp[0]?.id ?? null
     }
     if (!fpId) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ error: 'Could not determine fiscal period. Please set up fiscal periods in Settings first.' })
     }
 
-    const { rows } = await pool.query(
+    const { rows } = await client.query(
       `INSERT INTO purchase_entries (
          business_profile_id, fiscal_period_id, date_bs, date_ad,
          invoice_no, supplier_id, account_head,
          tax_exempt_purchases, taxable_purchases, taxable_imports,
-         capital_taxable_purchases, tax_amount, notes, created_by
+         capital_taxable_purchases, tax_amount, notes, user_id
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
@@ -541,10 +550,14 @@ router.post('/purchase-entries', async (req, res) => {
       ]
     )
 
+    await client.query('COMMIT')
     return res.status(201).json({ entry: rows[0] })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[POST /api/purchase-entries]', err)
     return res.status(500).json({ error: 'Failed to create purchase entry.' })
+  } finally {
+    client.release()
   }
 })
 
@@ -593,7 +606,7 @@ router.put('/purchase-entries/:id', async (req, res) => {
          account_head = $5, tax_exempt_purchases = $6, taxable_purchases = $7,
          taxable_imports = $8, capital_taxable_purchases = $9, tax_amount = $10,
          notes = $11, fiscal_period_id = COALESCE($12, fiscal_period_id)
-       WHERE id = $13 AND created_by = $14
+       WHERE id = $13 AND user_id = $14
        RETURNING *`,
       [
         date_bs ?? '', date_ad, invoice_no.trim(),
@@ -617,20 +630,29 @@ router.put('/purchase-entries/:id', async (req, res) => {
 router.delete('/purchase-entries/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
 
+  const client = await pool.connect()
   try {
-    await pool.query(
+    await client.query('BEGIN')
+    await client.query(
       `UPDATE supplier_payments SET purchase_entry_id = NULL WHERE purchase_entry_id = $1`,
       [id]
     )
-    const { rows } = await pool.query(
-      `DELETE FROM purchase_entries WHERE id = $1 AND created_by = $2 RETURNING id`,
+    const { rows } = await client.query(
+      `DELETE FROM purchase_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
       [id, req.user.id]
     )
-    if (rows.length === 0) return res.status(404).json({ error: 'Purchase entry not found.' })
+    if (rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Purchase entry not found.' })
+    }
+    await client.query('COMMIT')
     return res.json({ message: 'Purchase entry deleted.' })
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error('[DELETE /api/purchase-entries/:id]', err)
     return res.status(500).json({ error: 'Failed to delete purchase entry.' })
+  } finally {
+    client.release()
   }
 })
 
@@ -646,7 +668,7 @@ router.get('/supplier-payments', async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit  ?? '50', 10), 200)
   const offset = parseInt(req.query.offset ?? '0', 10)
 
-  const conditions = ['sp.created_by = $1']
+  const conditions = ['sp.user_id = $1']
   const params     = [req.user.id]
   let p = 2
 
@@ -710,7 +732,7 @@ router.post('/supplier-payments', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO supplier_payments
          (supplier_id, purchase_entry_id, date_bs, date_ad,
-          amount, payment_method, reference_no, notes, created_by)
+          amount, payment_method, reference_no, notes, user_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
@@ -734,7 +756,7 @@ router.delete('/supplier-payments/:id', async (req, res) => {
   if (isNaN(id)) return res.status(400).json({ error: 'Invalid payment id.' })
   try {
     const { rows } = await pool.query(
-      `DELETE FROM supplier_payments WHERE id = $1 AND created_by = $2 RETURNING id`,
+      `DELETE FROM supplier_payments WHERE id = $1 AND user_id = $2 RETURNING id`,
       [id, req.user.id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Payment not found.' })
@@ -754,7 +776,7 @@ router.get('/supplier-payments/stats', async (req, res) => {
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cash'),    0) AS paid_cash,
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'online'),  0) AS paid_online,
          COALESCE(SUM(amount) FILTER (WHERE payment_method = 'cheque'),  0) AS paid_cheque
-       FROM supplier_payments WHERE created_by = $1`,
+       FROM supplier_payments WHERE user_id = $1`,
       [req.user.id]
     )
     return res.json(rows[0])

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Q, fetchSupplierBals, apiFetch, authHeaders } from './api'
+import { Q, fetchSupplierBals, apiFetch } from './api'
 import './Suppliers.css'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -74,7 +74,7 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
     const method = isEdit ? 'PUT' : 'POST'
 
     try {
-      const res  = await fetch(url, { method, headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify(body) })
+      const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) { setErrs({ _global: json.error ?? 'Something went wrong.' }); setLoading(false); return }
       onSuccess(isEdit ? 'Supplier updated.' : 'Supplier added.')
@@ -186,7 +186,6 @@ export default function Suppliers({ onToast }) {
     fetch(`${API_URL}/api/suppliers/${id}`, {
       method: 'DELETE',
       credentials: 'include',
-      headers: authHeaders(),
     })
       .then(async res => {
         if (!res.ok) {

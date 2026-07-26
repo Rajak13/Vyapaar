@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { authHeaders } from './api'
 import './Settings.css'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -100,7 +99,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/settings/business-profile`, {
         method: 'PUT',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(businessProfile)
       })
@@ -125,7 +124,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/fiscal-periods`, {
         method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(newFiscalPeriod)
       })
@@ -134,7 +133,6 @@ export default function Settings({ user, onToast }) {
         // Refresh the fiscal periods list
         const periodsRes = await fetch(`${API_URL}/api/fiscal-periods`, {
           credentials: 'include',
-          headers: authHeaders()
         })
         if (periodsRes.ok) {
           const periodsData = await periodsRes.json()
