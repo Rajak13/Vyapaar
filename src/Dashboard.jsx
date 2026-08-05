@@ -107,14 +107,17 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
   const loadingData = loadingStats || loadingEntries || loadingBalances
 
-  // ── Prefetch all other pages as soon as the dashboard mounts ─────────────
-  // This means navigating to Suppliers / Register / Payments for the first time
-  // is INSTANT — data is already in cache.
+  // ── Prefetch all other pages after initial mount settles ─────────────────
+  // Deferring prefetch by 1.5s ensures primary dashboard queries load instantly
+  // without network contention on slower mobile/cloud connections.
   useEffect(() => {
-    qc.prefetchQuery({ queryKey: Q.suppliers(),    queryFn: fetchSupplierList })
-    qc.prefetchQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
-    qc.prefetchQuery({ queryKey: Q.payments('limit=50'), queryFn: () => fetchPayments('limit=50') })
-    qc.prefetchQuery({ queryKey: Q.entries('limit=20&offset=0'), queryFn: () => fetchEntries('limit=20&offset=0') })
+    const timer = setTimeout(() => {
+      qc.prefetchQuery({ queryKey: Q.suppliers(),    queryFn: fetchSupplierList })
+      qc.prefetchQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
+      qc.prefetchQuery({ queryKey: Q.payments('limit=50'), queryFn: () => fetchPayments('limit=50') })
+      qc.prefetchQuery({ queryKey: Q.entries('limit=20&offset=0'), queryFn: () => fetchEntries('limit=20&offset=0') })
+    }, 1500)
+    return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

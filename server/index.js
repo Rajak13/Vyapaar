@@ -11,8 +11,13 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import authRouter from './routes.js'
-import purchaseEntriesRouter from './purchase-entries.js'
+
+import authRouter from './routes/auth.js'
+import healthRouter from './routes/health.js'
+import suppliersRouter from './routes/suppliers.js'
+import purchaseEntriesRouter from './routes/purchase-entries.js'
+import paymentsRouter from './routes/payments.js'
+import settingsRouter from './routes/settings.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -20,12 +25,14 @@ const PORT = process.env.PORT ?? 3001
 // ── Security headers (helmet first, before everything else) ────────────────
 app.use(helmet())
 
+// ── Health check endpoint for cron-job.org keep-alive (unrestricted) ───────
+app.use(healthRouter)
+
 // ── Core middleware ────────────────────────────────────────────────────────
 app.use(express.json())
 app.use(cookieParser())
 
 // Build allowed origins list from FRONTEND_URL (comma-separated for multi-env support)
-// Always strip trailing slashes — a misconfigured env var shouldn't break auth.
 const rawOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
   .split(',')
   .map(o => o.trim().replace(/\/$/, ''))
@@ -43,7 +50,6 @@ app.use(cors({
   },
   credentials: true,
 }))
-
 
 // ── Rate limiters (scoped to auth routes only) ─────────────────────────────
 const loginLimiter = rateLimit({
@@ -68,9 +74,12 @@ const registerLimiter = rateLimit({
 app.use('/auth/login',    loginLimiter)
 app.use('/auth/register', registerLimiter)
 app.use('/auth',          authRouter)
-app.use('/api',           purchaseEntriesRouter)
 
-app.get('/health', (_req, res) => res.json({ ok: true }))
+app.use('/api', healthRouter)
+app.use('/api', suppliersRouter)
+app.use('/api', purchaseEntriesRouter)
+app.use('/api', paymentsRouter)
+app.use('/api', settingsRouter)
 
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

@@ -89,26 +89,34 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [sessionChecked, setSessionChecked] = useState(false)
 
+  const [hasSessionHint] = useState(() => localStorage.getItem('vyapaar_has_session') === 'true')
+
   function handleThemeChange(newTheme) {
     setTheme(newTheme)
     localStorage.setItem('vyapaar_theme', newTheme)
   }
 
-  // On every page load, check if a valid session cookie exists.
-  // Auth is purely cookie-based — no localStorage tokens needed.
+  // On page load, check if a valid session cookie exists in the background.
   useEffect(() => {
     fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.user) setUser(data.user)
+        if (data?.user) {
+          localStorage.setItem('vyapaar_has_session', 'true')
+          setUser(data.user)
+        } else {
+          localStorage.removeItem('vyapaar_has_session')
+        }
       })
       .catch(() => {})
       .finally(() => setSessionChecked(true))
   }, [])
 
-  // Don't render anything until we know whether the user is logged in —
-  // prevents a flash of the landing page before redirecting to dashboard.
-  if (!sessionChecked) return null
+  // If a returning user logged in previously, show a clean loader while verifying session.
+  // Logged-out visitors render the landing page instantly (<50ms)!
+  if (hasSessionHint && !sessionChecked) {
+    return <AppLoader />
+  }
 
   function openModal(tab) { setModal(tab) }
   function closeModal()   { setModal(null) }
@@ -119,6 +127,7 @@ export default function App() {
 
   // Called by AuthModal on success — receives only the user object (no token)
   function handleAuthSuccess(msg, loggedInUser) {
+    localStorage.setItem('vyapaar_has_session', 'true')
     queryClient.clear()
     setUser(loggedInUser)
     showToast(msg, 'success')
@@ -126,6 +135,7 @@ export default function App() {
 
   function handleLogout() {
     fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
+    localStorage.removeItem('vyapaar_has_session')
     sessionStorage.removeItem('vyapaar_nav')
     queryClient.clear()
     setUser(null)
@@ -175,7 +185,8 @@ export default function App() {
         <div className="hero-main">
           <h1 className="wordmark">Vyapaar</h1>
           <img
-            src="/hero-building.png"
+            src="/hero-building.webp"
+            onError={(e) => { e.currentTarget.src = '/hero-building.png' }}
             alt="Architecture"
             className="hero-building"
           />
