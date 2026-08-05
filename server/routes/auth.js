@@ -44,6 +44,7 @@ function setCookieAndRespond(res, req, user) {
 
   return res.json({
     user: { id: user.id, email: user.email, full_name: user.full_name },
+    token,
   })
 }
 
@@ -129,7 +130,7 @@ router.post('/logout', (_req, res) => {
 
 // ---------- GET /auth/me ----------
 router.get('/me', async (req, res) => {
-  const token = req.cookies?.vyapaaar_token
+  const token = req.cookies?.vyapaaar_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
   if (!token) return res.status(401).json({ error: 'Not authenticated.' })
 
   try {

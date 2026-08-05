@@ -11,16 +11,22 @@
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
 export async function apiFetch(path, options = {}) {
+  const token = localStorage.getItem('vyapaaar_token')
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`)
+  if (!res.ok) {
+    const err = new Error(json.error ?? `HTTP ${res.status}`)
+    err.status = res.status
+    throw err
+  }
   return json
 }
 

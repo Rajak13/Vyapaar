@@ -49,6 +49,8 @@ app.use(cors({
     callback(new Error(`Origin ${origin} not allowed by CORS`))
   },
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 }))
 
 // ── Rate limiters (scoped to auth routes only) ─────────────────────────────

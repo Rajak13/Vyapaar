@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
  * requireAuth — Express middleware that verifies the httpOnly JWT cookie.
  */
 export function requireAuth(req, res, next) {
-  const token = req.cookies?.vyapaaar_token
+  const token = req.cookies?.vyapaaar_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
 
   if (!token) {
     return res.status(401).json({ error: 'Not authenticated.' })

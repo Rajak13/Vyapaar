@@ -96,16 +96,20 @@ export default function App() {
     localStorage.setItem('vyapaar_theme', newTheme)
   }
 
-  // On page load, check if a valid session cookie exists in the background.
+  // On page load, check if a valid session cookie or token exists in the background.
   useEffect(() => {
-    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
+    const localToken = localStorage.getItem('vyapaaar_token')
+    const headers = localToken ? { Authorization: `Bearer ${localToken}` } : {}
+    fetch(`${API_URL}/auth/me`, { credentials: 'include', headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.user) {
           localStorage.setItem('vyapaar_has_session', 'true')
+          if (data.token) localStorage.setItem('vyapaaar_token', data.token)
           setUser(data.user)
         } else {
           localStorage.removeItem('vyapaar_has_session')
+          localStorage.removeItem('vyapaaar_token')
         }
       })
       .catch(() => {})
@@ -125,17 +129,21 @@ export default function App() {
     setToast({ message, type })
   }
 
-  // Called by AuthModal on success — receives only the user object (no token)
-  function handleAuthSuccess(msg, loggedInUser) {
+  // Called by AuthModal on success
+  function handleAuthSuccess(msg, loggedInUser, token) {
     localStorage.setItem('vyapaar_has_session', 'true')
+    if (token) localStorage.setItem('vyapaaar_token', token)
     queryClient.clear()
     setUser(loggedInUser)
     showToast(msg, 'success')
   }
 
   function handleLogout() {
-    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
+    const localToken = localStorage.getItem('vyapaaar_token')
+    const headers = localToken ? { Authorization: `Bearer ${localToken}` } : {}
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers })
     localStorage.removeItem('vyapaar_has_session')
+    localStorage.removeItem('vyapaaar_token')
     sessionStorage.removeItem('vyapaar_nav')
     queryClient.clear()
     setUser(null)

@@ -101,16 +101,16 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
   }, [qc])
 
   // ── Fetch overview data via React Query ───────────────────────────────────
-  const { data: statsData,    isLoading: loadingStats    } = useQuery({ queryKey: Q.stats(),         queryFn: fetchStats })
-  const { data: entriesData,  isLoading: loadingEntries  } = useQuery({ queryKey: Q.recentEntries(), queryFn: fetchRecentEntries })
-  const { data: balancesData, isLoading: loadingBalances } = useQuery({ queryKey: Q.supplierBals(),  queryFn: fetchSupplierBals })
+  const isAuth = Boolean(user)
+  const { data: statsData,    isLoading: loadingStats    } = useQuery({ queryKey: Q.stats(),         queryFn: fetchStats,         enabled: isAuth })
+  const { data: entriesData,  isLoading: loadingEntries  } = useQuery({ queryKey: Q.recentEntries(), queryFn: fetchRecentEntries, enabled: isAuth })
+  const { data: balancesData, isLoading: loadingBalances } = useQuery({ queryKey: Q.supplierBals(),  queryFn: fetchSupplierBals,  enabled: isAuth })
 
   const loadingData = loadingStats || loadingEntries || loadingBalances
 
   // ── Prefetch all other pages after initial mount settles ─────────────────
-  // Deferring prefetch by 1.5s ensures primary dashboard queries load instantly
-  // without network contention on slower mobile/cloud connections.
   useEffect(() => {
+    if (!user) return
     const timer = setTimeout(() => {
       qc.prefetchQuery({ queryKey: Q.suppliers(),    queryFn: fetchSupplierList })
       qc.prefetchQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
@@ -118,8 +118,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
       qc.prefetchQuery({ queryKey: Q.entries('limit=20&offset=0'), queryFn: () => fetchEntries('limit=20&offset=0') })
     }, 1500)
     return () => clearTimeout(timer)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user])
 
   // ── Derive overview values from query data ────────────────────────────────
   const stats = {
@@ -233,11 +232,6 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             <div className="dash-theme-toggle" role="group" aria-label="Theme">
               <button className={`dash-toggle-btn${theme === 'light' ? ' active' : ''}`} onClick={() => onThemeChange('light')} aria-label="Light theme"><SunIcon /></button>
               <button className={`dash-toggle-btn${theme === 'dark'  ? ' active' : ''}`} onClick={() => onThemeChange('dark')}  aria-label="Dark theme"><MoonIcon /></button>
-            </div>
-
-            <div className="dash-trust-badge" title="Your data is backed up safely in cloud storage">
-              <span className="dash-trust-dot" />
-              <span>Saved & Synced</span>
             </div>
 
             <div className="dash-user-pill">

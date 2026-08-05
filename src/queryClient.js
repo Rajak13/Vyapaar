@@ -12,7 +12,10 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime:          60 * 1000,   // 60 seconds
       gcTime:             5 * 60 * 1000, // 5 minutes
-      retry:              1,
+      retry: (failureCount, error) => {
+        if (error?.status === 401 || String(error?.message).includes('401')) return false
+        return failureCount < 1
+      },
       refetchOnWindowFocus: false,     // don't refetch just because user switched tabs
     },
   },
