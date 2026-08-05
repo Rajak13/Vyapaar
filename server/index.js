@@ -86,4 +86,26 @@ app.use('/api', settingsRouter)
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Vyapaaar API running on http://localhost:${PORT}`)
+  
+  // Auto-ensure database view on startup
+  import('./routes/auth.js').then(({ pool }) => {
+    pool.query(`
+      CREATE OR REPLACE VIEW purchase_entry_due AS
+      SELECT
+          pe.id                                               AS purchase_entry_id,
+          pe.supplier_id,
+          pe.invoice_no,
+          pe.date_ad,
+          pe.grand_total,
+          COALESCE(paid.paid_amount, 0)                       AS paid_amount,
+          pe.grand_total - COALESCE(paid.paid_amount, 0)      AS amount_due
+      FROM purchase_entries pe
+      LEFT JOIN (
+          SELECT purchase_entry_id, SUM(amount) AS paid_amount
+          FROM supplier_payments
+          WHERE purchase_entry_id IS NOT NULL
+          GROUP BY purchase_entry_id
+      ) paid ON paid.purchase_entry_id = pe.id;
+    `).catch(err => console.error('[DB View Init Error]', err.message))
+  }).catch(() => {})
 })

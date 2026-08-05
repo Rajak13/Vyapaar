@@ -214,15 +214,20 @@ router.get('/purchase-entries', async (req, res) => {
          s.name AS supplier_name,
          s.pan  AS supplier_pan,
          COALESCE(ped.paid_amount, 0)  AS paid_amount,
-         COALESCE(ped.amount_due,  0)  AS amount_due,
+         (pe.grand_total - COALESCE(ped.paid_amount, 0)) AS amount_due,
          CASE
-           WHEN COALESCE(ped.amount_due, pe.grand_total) <= 0             THEN 'paid'
-           WHEN COALESCE(ped.paid_amount, 0) > 0                          THEN 'partial'
+           WHEN (pe.grand_total - COALESCE(ped.paid_amount, 0)) <= 0 THEN 'paid'
+           WHEN COALESCE(ped.paid_amount, 0) > 0                     THEN 'partial'
            ELSE 'pending'
          END AS paid_status
        FROM purchase_entries pe
        JOIN suppliers s ON s.id = pe.supplier_id
-       LEFT JOIN purchase_entry_due ped ON ped.purchase_entry_id = pe.id
+       LEFT JOIN (
+         SELECT purchase_entry_id, SUM(amount) AS paid_amount
+         FROM supplier_payments
+         WHERE purchase_entry_id IS NOT NULL
+         GROUP BY purchase_entry_id
+       ) ped ON ped.purchase_entry_id = pe.id
        ${where}
        ORDER BY pe.date_ad DESC
        LIMIT $${p} OFFSET $${p + 1}`,

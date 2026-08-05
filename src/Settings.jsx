@@ -20,6 +20,14 @@ function SaveIcon() {
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
+function getAuthHeaders() {
+  const rawToken = localStorage.getItem('vyapaaar_token')
+  const token = (rawToken && rawToken !== 'undefined' && rawToken !== 'null') ? rawToken : null
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  }
+}
 
 export default function Settings({ user, onToast }) {
   const [businessProfile, setBusinessProfile] = useState({
@@ -48,8 +56,8 @@ export default function Settings({ user, onToast }) {
       setLoading(true)
       try {
         const [profileRes, periodsRes] = await Promise.all([
-          fetch(`${API_URL}/api/settings/business-profile`, { credentials: 'include', headers: authHeaders() }),
-          fetch(`${API_URL}/api/fiscal-periods`, { credentials: 'include', headers: authHeaders() })
+          fetch(`${API_URL}/api/settings/business-profile`, { credentials: 'include', headers: getAuthHeaders() }),
+          fetch(`${API_URL}/api/fiscal-periods`, { credentials: 'include', headers: getAuthHeaders() })
         ])
 
         if (profileRes.ok) {
@@ -99,7 +107,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/settings/business-profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify(businessProfile)
       })
@@ -124,7 +132,7 @@ export default function Settings({ user, onToast }) {
     try {
       const res = await fetch(`${API_URL}/api/fiscal-periods`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify(newFiscalPeriod)
       })
@@ -133,6 +141,7 @@ export default function Settings({ user, onToast }) {
         // Refresh the fiscal periods list
         const periodsRes = await fetch(`${API_URL}/api/fiscal-periods`, {
           credentials: 'include',
+          headers: getAuthHeaders()
         })
         if (periodsRes.ok) {
           const periodsData = await periodsRes.json()
