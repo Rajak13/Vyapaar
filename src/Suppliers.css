@@ -436,6 +436,74 @@
   /* Extra bottom breathing room so FAB doesn't cover last row */
   .sup-page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
+  /* Table hide & mobile cards */
+  .sup-table-wrap { display: none; }
+  .sup-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .sup-mobile-card {
+    background: var(--dc);
+    border: 1px solid var(--dash-border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .sup-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .sup-mobile-card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.02);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .dash-page.app-dark .sup-mobile-card-body {
+    background: rgba(255,255,255,0.03);
+  }
+  .sup-mobile-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--dm);
+    display: block;
+  }
+  .sup-mobile-card-due {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--df);
+  }
+  .sup-mobile-card-sub {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--df);
+  }
+  .sup-mobile-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--dm);
+  }
+  .sup-mobile-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sup-mobile-card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
   /* Hide header button on mobile — replaced by FAB */
   .sup-header .sup-btn-primary { display: none; }
 

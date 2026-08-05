@@ -481,8 +481,64 @@
 }
 .pay-overpay-confirm input { cursor: pointer; accent-color: #ab2f00; }
 
-/* ── Mobile responsive bottom sheet ── */
+/* ── Mobile cards hidden by default ── */
+.pay-mobile-cards { display: none; }
+
+/* ── Mobile responsive bottom sheet & cards ── */
 @media (max-width: 768px) {
+  .pay-page { padding: 20px 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .pay-stats-row { grid-template-columns: 1fr 1fr; }
+  .pay-stat-accent { grid-column: span 2; }
+  .pay-header .pay-btn-primary { display: none; }
+
+  .pay-table-wrap { display: none; }
+  .pay-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pay-mobile-card {
+    background: var(--dc);
+    border: 1px solid var(--dash-border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .pay-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .pay-mobile-card-date {
+    font-size: 11px;
+    color: var(--dm);
+    margin-top: 2px;
+  }
+  .pay-mobile-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px dashed var(--dash-border);
+    padding-top: 10px;
+  }
+  .pay-mobile-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--dm);
+    display: block;
+  }
+  .pay-mobile-card-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #10B981;
+  }
+
   .pay-overlay {
     z-index: 2000;
     align-items: flex-end;

@@ -312,7 +312,42 @@ export default function PurchaseRegister({ theme, onToast }) {
               </tr>
             ))}
           </tbody>
-        </table>
+      </div>
+
+      {/* ── Mobile card list (visible on <768px via CSS) ── */}
+      <div className="pr-mobile-cards">
+        {!loading && entries.map(entry => (
+          <div key={entry.id} className="pr-mobile-card" onClick={() => setSelectedEntry(entry)}>
+            <div className="pr-mobile-card-header">
+              <div>
+                <span className="pr-mobile-card-inv">{entry.invoice_no}</span>
+                <div className="pr-mobile-card-date">{entry.date_bs || adToBs(entry.date_ad) || '—'}</div>
+              </div>
+              <PayStatusBadge status={entry.paid_status} />
+            </div>
+
+            <div className="pr-mobile-card-body">
+              <div className="pr-mobile-card-supplier">{entry.supplier_name}</div>
+              {entry.supplier_pan && <div className="pr-mobile-card-pan">PAN: {entry.supplier_pan}</div>}
+            </div>
+
+            <div className="pr-mobile-card-footer">
+              <div>
+                <span className="pr-mobile-card-label">Grand Total</span>
+                <span className="pr-mobile-card-amount">{fmtRs(entry.grand_total)}</span>
+              </div>
+
+              <div className="pr-mobile-card-actions" onClick={e => e.stopPropagation()}>
+                <button className="pr-action-btn" onClick={() => openEdit(entry)} title="Edit entry">
+                  <EditIcon />
+                </button>
+                <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry.id)} title="Delete entry">
+                  <DeleteIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── Pagination ── */}

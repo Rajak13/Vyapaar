@@ -277,19 +277,19 @@ export default function Suppliers({ onToast }) {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="sup-summary-row">
-        <div className="sup-summary-card">
-          <span className="sup-summary-label">Total Purchased (all time)</span>
-          <span className="sup-summary-value">{fmtRs(totalPurchased)}</span>
+      {/* Financial Status Ribbon (No boxy KPI cards) */}
+      <div className="fin-command-bar" style={{ marginBottom: '12px' }}>
+        <div className="fin-cmd-pill fin-cmd-primary">
+          <span className="fin-cmd-label">Total Purchased</span>
+          <span className="fin-cmd-val">{fmtRs(totalPurchased)}</span>
         </div>
-        <div className="sup-summary-card sup-summary-accent">
-          <span className="sup-summary-label">Outstanding Balance</span>
-          <span className="sup-summary-value">{fmtRs(totalDue)}</span>
+        <div className="fin-cmd-pill fin-cmd-warn">
+          <span className="fin-cmd-label">Outstanding Balance</span>
+          <span className="fin-cmd-val">{fmtRs(totalDue)}</span>
         </div>
-        <div className="sup-summary-card">
-          <span className="sup-summary-label">Active Suppliers</span>
-          <span className="sup-summary-value">{suppliers.filter(s => s.is_active).length}</span>
+        <div className="fin-cmd-pill">
+          <span className="fin-cmd-label">Active Suppliers</span>
+          <span className="fin-cmd-val">{suppliers.filter(s => s.is_active).length}</span>
         </div>
       </div>
 
@@ -380,6 +380,58 @@ export default function Suppliers({ onToast }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card list (visible on <768px via CSS) */}
+      <div className="sup-mobile-cards">
+        {!loading && filtered.map(s => (
+          <div key={s.supplier_id} className="sup-mobile-card">
+            <div className="sup-mobile-card-header">
+              <div className="sup-name-cell">
+                <div className="sup-avatar">{s.supplier_name[0]?.toUpperCase()}</div>
+                <div>
+                  <div className="sup-name">{s.supplier_name}</div>
+                  {s.address && <div className="sup-address">{s.address}</div>}
+                </div>
+              </div>
+              <span className={`sup-badge${s.is_active ? ' sup-badge-active' : ' sup-badge-inactive'}`}>
+                {s.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            <div className="sup-mobile-card-body">
+              <div>
+                <span className="sup-mobile-card-label">Balance Due</span>
+                <span className={`sup-mobile-card-due${parseFloat(s.balance_due) > 0 ? ' sup-td-due' : ''}`}>
+                  {fmtRs(s.balance_due)}
+                </span>
+              </div>
+              <div>
+                <span className="sup-mobile-card-label">Total Purchased / Paid</span>
+                <span className="sup-mobile-card-sub">{fmtRs(s.total_purchased)} / {fmtRs(s.total_paid)}</span>
+              </div>
+            </div>
+
+            <div className="sup-mobile-card-footer">
+              <div className="sup-mobile-card-meta">
+                {s.supplier_pan && <span>PAN: {s.supplier_pan}</span>}
+                {s.phone && <span>Phone: {s.phone}</span>}
+              </div>
+
+              <div className="sup-mobile-card-actions">
+                <button className="sup-action-btn sup-action-btn--wa" onClick={() => shareWhatsApp(s)} title="Share WhatsApp statement">
+                  <WhatsAppIcon />
+                </button>
+                <button className="sup-action-btn" onClick={() => openEdit(s)} title="Edit supplier">
+                  <EditIcon />
+                </button>
+                <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s.supplier_id)} title="Deactivate supplier">
+                  <DeleteIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Mobile floating action button — visible only on small screens via CSS */}

@@ -344,11 +344,85 @@
 .pr-page-btn.active { background: #ab2f00; color: #fff; border-color: transparent; }
 .pr-page-num { min-width: 32px; justify-content: center; }
 
+/* ── Mobile card list ── */
+.pr-mobile-cards { display: none; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .pr-page { padding: 20px 16px calc(80px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .pr-page { padding: 20px 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
   .pr-header { flex-direction: column; gap: 12px; }
   .pr-header-actions { width: 100%; justify-content: flex-end; }
+  .pr-header-actions .pr-btn-primary { display: none; }
+
+  .pr-table-wrap { display: none; }
+  .pr-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pr-mobile-card {
+    background: var(--dc);
+    border: 1px solid var(--dash-border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .pr-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .pr-mobile-card-inv {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--df);
+  }
+  .pr-mobile-card-date {
+    font-size: 11px;
+    color: var(--dm);
+    margin-top: 2px;
+  }
+  .pr-mobile-card-body {
+    border-top: 1px dashed var(--dash-border);
+    border-bottom: 1px dashed var(--dash-border);
+    padding: 10px 0;
+  }
+  .pr-mobile-card-supplier {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--df);
+  }
+  .pr-mobile-card-pan {
+    font-size: 11px;
+    color: var(--dm);
+    margin-top: 2px;
+  }
+  .pr-mobile-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .pr-mobile-card-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--dm);
+    display: block;
+  }
+  .pr-mobile-card-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--df);
+  }
+  .pr-mobile-card-actions {
+    display: flex;
+    gap: 8px;
+  }
 }
 
 /* ── Paid status badge ── */

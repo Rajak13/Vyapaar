@@ -368,24 +368,24 @@ export default function Payments({ onToast }) {
         </button>
       </div>
 
-      {/* Stats row */}
+      {/* Financial Status Ribbon (No boxy KPI cards) */}
       {stats && (
-        <div className="pay-stats-row">
-          <div className="pay-stat-card pay-stat-accent">
-            <span className="pay-stat-label">Total Paid (All Time)</span>
-            <span className="pay-stat-value">{fmtRs(stats.total_paid)}</span>
+        <div className="fin-command-bar" style={{ marginBottom: '12px' }}>
+          <div className="fin-cmd-pill fin-cmd-info">
+            <span className="fin-cmd-label">Total Paid</span>
+            <span className="fin-cmd-val">{fmtRs(stats.total_paid)}</span>
           </div>
-          <div className="pay-stat-card">
-            <span className="pay-stat-label">Cash Payments</span>
-            <span className="pay-stat-value">{fmtRs(stats.paid_cash)}</span>
+          <div className="fin-cmd-pill">
+            <span className="fin-cmd-label">Cash</span>
+            <span className="fin-cmd-val">{fmtRs(stats.paid_cash)}</span>
           </div>
-          <div className="pay-stat-card">
-            <span className="pay-stat-label">Online Transfers</span>
-            <span className="pay-stat-value">{fmtRs(stats.paid_online)}</span>
+          <div className="fin-cmd-pill">
+            <span className="fin-cmd-label">Online</span>
+            <span className="fin-cmd-val">{fmtRs(stats.paid_online)}</span>
           </div>
-          <div className="pay-stat-card">
-            <span className="pay-stat-label">Cheque Payments</span>
-            <span className="pay-stat-value">{fmtRs(stats.paid_cheque)}</span>
+          <div className="fin-cmd-pill">
+            <span className="fin-cmd-label">Cheque</span>
+            <span className="fin-cmd-val">{fmtRs(stats.paid_cheque)}</span>
           </div>
         </div>
       )}
@@ -470,6 +470,41 @@ export default function Payments({ onToast }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card list (visible on <768px via CSS) */}
+      <div className="pay-mobile-cards">
+        {!loading && filtered.map(p => (
+          <div key={p.id} className="pay-mobile-card" onClick={() => setSelectedPayment(p)}>
+            <div className="pay-mobile-card-header">
+              <div className="pay-supplier-cell">
+                <div className="pay-avatar">{p.supplier_name?.[0]?.toUpperCase()}</div>
+                <div>
+                  <div className="pay-supplier-name">{p.supplier_name}</div>
+                  <div className="pay-mobile-card-date">{p.date_bs || '—'} ({fmtDate(p.date_ad)})</div>
+                </div>
+              </div>
+              <MethodBadge method={p.payment_method} />
+            </div>
+
+            <div className="pay-mobile-card-footer">
+              <div>
+                <span className="pay-mobile-card-label">Amount Paid</span>
+                <span className="pay-mobile-card-amount">{fmtRs(p.amount)}</span>
+              </div>
+
+              <div className="pay-mobile-card-actions" onClick={e => e.stopPropagation()}>
+                <button
+                  className="pay-action-btn pay-action-btn--delete"
+                  title="Delete payment"
+                  onClick={() => handleDeletePayment(p.id)}
+                >
+                  <DeleteIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {showForm && (

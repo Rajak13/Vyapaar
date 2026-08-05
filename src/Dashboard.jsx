@@ -315,73 +315,26 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 </button>
               </div>
 
-              {/* Stat cards — bento proportions */}
-              <div className="dash-stats-row">
+              {/* ── Financial Command Ribbon (Minimalist Ledger Banner) ── */}
+              <div className="fin-command-bar" aria-label="Financial summary ribbon">
+                <button className="fin-cmd-pill fin-cmd-primary" onClick={() => handleNavClick('register')}>
+                  <span className="fin-cmd-label">Total Purchased (FY)</span>
+                  <span className="fin-cmd-val">{fmtRs(stats.totalPurchasesFY)}</span>
+                </button>
 
-                <div className="dash-card dash-stat-accent">
-                  <div className="dash-stat-label"><ShoppingIcon /><span>Total Purchases</span></div>
-                  <div className="dash-stat-value">{fmtRs(stats.totalPurchasesFY)}</div>
-                  <div className="dash-stat-sub">Current fiscal year</div>
-                  <div className="dash-stat-watermark" aria-hidden="true">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
-                  </div>
-                </div>
+                <button className="fin-cmd-pill fin-cmd-warn" onClick={() => handleNavClick('suppliers')}>
+                  <span className="fin-cmd-label">Payable Dues</span>
+                  <span className="fin-cmd-val">{fmtRs(stats.pendingPayments)}</span>
+                </button>
 
-                <div className="dash-card dash-stat-ring" onClick={() => setActiveNav('suppliers')} style={{ cursor: 'pointer' }}>
-                  <div className="dash-stat-label"><SuppliersIcon /><span>Active Suppliers</span></div>
-                  <div className="dash-ring-wrap">
-                    <div className="dash-ring" aria-label={`${stats.activeSuppliers} active suppliers`}>
-                      <svg viewBox="0 0 72 72">
-                        <circle className="dash-ring-track" cx="36" cy="36" r="30" />
-                        <circle
-                          className="dash-ring-fill"
-                          cx="36" cy="36" r="30"
-                          strokeDashoffset={
-                            stats.activeSuppliers > 0
-                              ? Math.max(10, 188.5 * (1 - Math.min(stats.activeSuppliers, 20) / 20))
-                              : 188.5
-                          }
-                        />
-                      </svg>
-                      <div className="dash-ring-label">{stats.activeSuppliers}</div>
-                    </div>
-                  </div>
-                  <div className="dash-stat-sub">View supplier ledgers →</div>
-                </div>
+                <button className="fin-cmd-pill" onClick={() => handleNavClick('suppliers')}>
+                  <span className="fin-cmd-label">Active Parties</span>
+                  <span className="fin-cmd-val">{stats.activeSuppliers}</span>
+                </button>
 
-                <div className="dash-card" onClick={() => setActiveNav('suppliers')} style={{ cursor: 'pointer' }}>
-                  <div className="dash-stat-label"><CashIcon /><span>Pending Payments</span></div>
-                  <div className="dash-stat-value">{fmtRs(stats.pendingPayments)}</div>
-                  <div className="dash-stat-sub" style={{ color: '#eb5e28', fontWeight: 600 }}>Payable to suppliers →</div>
-                </div>
-
-                <div className="dash-card">
-                  <div className="dash-stat-label"><RegisterIcon /><span>Entries This Month</span></div>
-                  <div className="dash-stat-value">{stats.entriesThisMonth}</div>
-                  <div className="dash-stat-sub">Current BS period</div>
-                </div>
-
-              </div>
-
-              {/* Today's End-of-Day Summary */}
-              <div className="dash-card dash-daily-summary-card">
-                <div className="dash-daily-summary-header">
-                  <span className="dash-daily-summary-tag">TODAY'S SUMMARY</span>
-                  <span className="dash-daily-summary-date">{dayName}, {monName} {dayNum} ({adToBs(today.toISOString().slice(0, 10)) || ''})</span>
-                </div>
-                <div className="dash-daily-summary-body">
-                  <div className="dash-daily-summary-item">
-                    <span className="dash-daily-summary-label">Entries Recorded</span>
-                    <span className="dash-daily-summary-num">{stats.entriesThisMonth > 0 ? stats.entriesThisMonth : 0}</span>
-                  </div>
-                  <div className="dash-daily-summary-item">
-                    <span className="dash-daily-summary-label">Total Purchased (FY)</span>
-                    <span className="dash-daily-summary-num">{fmtRs(stats.totalPurchasesFY)}</span>
-                  </div>
-                  <div className="dash-daily-summary-item">
-                    <span className="dash-daily-summary-label">Outstanding Payables</span>
-                    <span className="dash-daily-summary-num" style={{ color: '#eb5e28' }}>{fmtRs(stats.pendingPayments)}</span>
-                  </div>
+                <div className="fin-cmd-pill fin-cmd-info">
+                  <span className="fin-cmd-label">Today ({adToBs(today.toISOString().slice(0, 10)) || ''})</span>
+                  <span className="fin-cmd-val">{stats.entriesThisMonth} Entries</span>
                 </div>
               </div>
 

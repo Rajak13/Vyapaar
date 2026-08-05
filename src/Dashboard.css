@@ -25,9 +25,9 @@
   background: #1e1c1a;
 }
 
-/* ═══ CSS tokens scoped to dark ═══ */
-.dash-page.app-dark { --dc: #252422; --db: #1e1c1a; --df: #fffcf2; --dm: #9e9488; --dbd: rgba(255,255,255,0.08); }
-.dash-page.app-light { --dc: #ffffff; --db: #F3F2F0; --df: #1a1c1b; --dm: #8c8070; --dbd: rgba(0,0,0,0.05); }
+/* ═══ CSS tokens scoped to dark & light — WCAG AA Contrast Compliant (>= 4.5:1) ═══ */
+.dash-page.app-dark  { --dc: #252422; --db: #1e1c1a; --df: #fffcf2; --dm: #CBD5E0; --dash-border: rgba(255,255,255,0.12); --dbd: rgba(255,255,255,0.08); }
+.dash-page.app-light { --dc: #ffffff; --db: #F3F2F0; --df: #1a1c1b; --dm: #4B5563; --dash-border: rgba(0,0,0,0.08); --dbd: rgba(0,0,0,0.05); }
 
 /* ═══ Top nav ═══ */
 .dash-topnav {
@@ -224,6 +224,71 @@
   gap: 14px;
   flex-wrap: wrap;
 }
+
+/* ═══ High-Density Financial Command Ribbon (No boxy KPI cards) ═══ */
+.fin-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.fin-command-bar::-webkit-scrollbar { display: none; }
+
+.fin-cmd-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--dc);
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  padding: 8px 18px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.fin-cmd-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(235, 94, 40, 0.4);
+}
+
+.fin-cmd-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dm);
+}
+
+.fin-cmd-val {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--df);
+}
+
+.fin-cmd-primary {
+  background: rgba(235, 94, 40, 0.08);
+  border-color: rgba(235, 94, 40, 0.25);
+}
+.fin-cmd-primary .fin-cmd-val { color: #eb5e28; }
+
+.fin-cmd-warn {
+  background: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.25);
+}
+.fin-cmd-warn .fin-cmd-val { color: #e11d48; }
+
+.fin-cmd-info {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  cursor: default;
+}
+.fin-cmd-info .fin-cmd-val { color: #10b981; }
 
 .dash-date-card {
   background: var(--dc);
@@ -665,14 +730,17 @@
   .dash-sidebar { display: none; } /* hidden — replaced by bottom tab bar */
 
   .dash-stats-row {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     min-height: auto;
   }
   .dash-stats-row .dash-card {
-    min-height: 100px;
-    padding: 20px;
+    min-height: 120px;
+    padding: 16px;
+  }
+  .dash-stat-accent {
+    grid-column: span 2;
   }
   .dash-insights-row { grid-template-columns: 1fr; }
   .dash-welcome-row  { gap: 12px; margin-bottom: 16px; }
