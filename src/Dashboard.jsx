@@ -235,6 +235,11 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               <button className={`dash-toggle-btn${theme === 'dark'  ? ' active' : ''}`} onClick={() => onThemeChange('dark')}  aria-label="Dark theme"><MoonIcon /></button>
             </div>
 
+            <div className="dash-trust-badge" title="Your data is backed up safely in cloud storage">
+              <span className="dash-trust-dot" />
+              <span>Saved & Synced</span>
+            </div>
+
             <div className="dash-user-pill">
               <div className="dash-avatar">{fullName[0]?.toUpperCase() ?? '?'}</div>
               <div>
@@ -311,7 +316,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="dash-greeting-name">{fullName}</div>
                 </div>
                 <button className="dash-view-entries-btn" onClick={() => setShowEntryForm(true)}>
-                  <span>View Recent Entries</span>
+                  <span>+ Add Entry</span>
                   <ArrowIcon />
                 </button>
               </div>
@@ -328,7 +333,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   </div>
                 </div>
 
-                <div className="dash-card dash-stat-ring">
+                <div className="dash-card dash-stat-ring" onClick={() => setActiveNav('suppliers')} style={{ cursor: 'pointer' }}>
                   <div className="dash-stat-label"><SuppliersIcon /><span>Active Suppliers</span></div>
                   <div className="dash-ring-wrap">
                     <div className="dash-ring" aria-label={`${stats.activeSuppliers} active suppliers`}>
@@ -338,7 +343,6 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                           className="dash-ring-fill"
                           cx="36" cy="36" r="30"
                           strokeDashoffset={
-                            // Fill proportional to capped display value; 0 suppliers = empty ring
                             stats.activeSuppliers > 0
                               ? Math.max(10, 188.5 * (1 - Math.min(stats.activeSuppliers, 20) / 20))
                               : 188.5
@@ -348,14 +352,13 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                       <div className="dash-ring-label">{stats.activeSuppliers}</div>
                     </div>
                   </div>
-                  <div className="dash-stat-sub">Verified partners</div>
+                  <div className="dash-stat-sub">View supplier ledgers →</div>
                 </div>
 
-                <div className="dash-card">
+                <div className="dash-card" onClick={() => setActiveNav('suppliers')} style={{ cursor: 'pointer' }}>
                   <div className="dash-stat-label"><CashIcon /><span>Pending Payments</span></div>
-                  {/* TODO: wire to supplier_balances view when payment tracking is built */}
                   <div className="dash-stat-value">{fmtRs(stats.pendingPayments)}</div>
-                  <div className="dash-stat-sub">Payable to suppliers</div>
+                  <div className="dash-stat-sub" style={{ color: '#eb5e28', fontWeight: 600 }}>Payable to suppliers →</div>
                 </div>
 
                 <div className="dash-card">
@@ -364,6 +367,28 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="dash-stat-sub">Current BS period</div>
                 </div>
 
+              </div>
+
+              {/* Today's End-of-Day Summary */}
+              <div className="dash-card dash-daily-summary-card">
+                <div className="dash-daily-summary-header">
+                  <span className="dash-daily-summary-tag">TODAY'S SUMMARY</span>
+                  <span className="dash-daily-summary-date">{dayName}, {monName} {dayNum} ({adToBs(today.toISOString().slice(0, 10)) || ''})</span>
+                </div>
+                <div className="dash-daily-summary-body">
+                  <div className="dash-daily-summary-item">
+                    <span className="dash-daily-summary-label">Entries Recorded</span>
+                    <span className="dash-daily-summary-num">{stats.entriesThisMonth > 0 ? stats.entriesThisMonth : 0}</span>
+                  </div>
+                  <div className="dash-daily-summary-item">
+                    <span className="dash-daily-summary-label">Total Purchased (FY)</span>
+                    <span className="dash-daily-summary-num">{fmtRs(stats.totalPurchasesFY)}</span>
+                  </div>
+                  <div className="dash-daily-summary-item">
+                    <span className="dash-daily-summary-label">Outstanding Payables</span>
+                    <span className="dash-daily-summary-num" style={{ color: '#eb5e28' }}>{fmtRs(stats.pendingPayments)}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Entries table */}
@@ -535,19 +560,51 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
       </div>
 
-      {/* ── Mobile bottom tab bar — replaces sidebar on small screens ── */}
+      {/* ── Mobile bottom tab bar with elevated center ＋ button ── */}
       <nav className="dash-mobile-nav" aria-label="Main navigation">
-        {NAV_ITEMS.map(({ key, Icon, title }) => (
-          <button
-            key={key}
-            className={`dash-mobile-nav-btn${activeNav === key ? ' active' : ''}`}
-            onClick={() => handleNavClick(key)}
-            aria-label={title}
-          >
-            <Icon />
-            <span className="dash-mobile-nav-label">{title.split(' ')[0]}</span>
-          </button>
-        ))}
+        <button
+          className={`dash-mobile-nav-btn${activeNav === 'overview' ? ' active' : ''}`}
+          onClick={() => handleNavClick('overview')}
+          aria-label="Home"
+        >
+          <OverviewIcon />
+          <span className="dash-mobile-nav-label">Home</span>
+        </button>
+        <button
+          className={`dash-mobile-nav-btn${activeNav === 'register' ? ' active' : ''}`}
+          onClick={() => handleNavClick('register')}
+          aria-label="Register"
+        >
+          <RegisterIcon />
+          <span className="dash-mobile-nav-label">Register</span>
+        </button>
+
+        {/* Elevated Center Add Button */}
+        <button
+          className="dash-mobile-fab"
+          onClick={() => setShowEntryForm(true)}
+          aria-label="Add Purchase Entry"
+          title="Add Purchase Entry"
+        >
+          <span>＋</span>
+        </button>
+
+        <button
+          className={`dash-mobile-nav-btn${activeNav === 'suppliers' ? ' active' : ''}`}
+          onClick={() => handleNavClick('suppliers')}
+          aria-label="Parties"
+        >
+          <SuppliersNavIcon />
+          <span className="dash-mobile-nav-label">Parties</span>
+        </button>
+        <button
+          className={`dash-mobile-nav-btn${activeNav === 'payments' ? ' active' : ''}`}
+          onClick={() => handleNavClick('payments')}
+          aria-label="Payments"
+        >
+          <PaymentsNavIcon />
+          <span className="dash-mobile-nav-label">Payments</span>
+        </button>
       </nav>
 
       {/* ── Purchase Entry Form modal ── */}

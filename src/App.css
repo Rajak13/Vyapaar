@@ -143,11 +143,13 @@
   margin: 0;
   padding: 0;
   user-select: none;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
 }
 
 /*
   Building: centered horizontally, sits below wordmark baseline,
   bleeds off the bottom. Wordmark text overlaps the building top.
+  Uses transparent cutout PNG + smooth gradient edge fade.
 */
 .hero-building {
   position: absolute;
@@ -160,6 +162,10 @@
   display: block;
   z-index: 1;
   pointer-events: none;
+  filter: grayscale(100%) contrast(1.25) brightness(1.05);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 85%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 85%, rgba(0, 0, 0, 0) 100%);
+  transition: filter 0.25s ease, opacity 0.25s ease;
 }
 
 /* ── CTA pill (bottom-left) ── */
@@ -299,12 +305,28 @@
   color: var(--cream);
 }
 
-/* ── Light mode: building photo contrast boost ──
-   The B&W cutout reads well on dark but fades on cream.
-   A blend overlay darkens midtones without affecting the transparent cutout edges. */
+/* ── Light mode: building photo contrast adjustment ── */
 .app-light .hero-building {
-  filter: grayscale(100%) contrast(1.15) brightness(0.88);
+  filter: grayscale(100%) contrast(1.2) brightness(0.9);
   mix-blend-mode: multiply;
+}
+
+/* ── Tablet ── */
+@media (max-width: 1024px) {
+  .hero-main {
+    padding-left: 0;
+    min-height: 460px;
+  }
+
+  .wordmark {
+    font-size: clamp(68px, 14vw, 130px);
+  }
+
+  .hero-building {
+    right: 2vw;
+    height: 72vh;
+    max-height: 580px;
+  }
 }
 
 /* ── Mobile ── */
@@ -353,9 +375,9 @@
     z-index: 1;
   }
 
-  /* Ribbon: shrink font so text stays readable on narrow viewport */
+  /* Ribbon: optimized text size for mobile viewports */
   .ribbon-text {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   /* Bottom controls: keep them in view and not overlapping */

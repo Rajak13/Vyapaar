@@ -145,6 +145,36 @@
 .pef-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .pef-input[type="number"] { -moz-appearance: textfield; }
 
+.pef-adv-toggle {
+  background: none;
+  border: 1px dashed rgba(235, 94, 40, 0.4);
+  color: #eb5e28;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10px 0 4px;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pef-adv-toggle:hover {
+  background: rgba(235, 94, 40, 0.1);
+  border-color: #eb5e28;
+}
+
+.pef-adv-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(204, 197, 185, 0.12);
+  margin-bottom: 8px;
+}
+
 /* ── Section label ── */
 .pef-section-label {
   font-family: 'Inter', sans-serif;
@@ -372,23 +402,23 @@
 }
 
 /* ── Mobile bottom sheet ── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .pef-overlay {
+    z-index: 2000;
     align-items: flex-end;
     justify-content: center;
-    /* Sit above the bottom nav bar */
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
   }
 
   .pef-panel {
     max-width: 100%;
     height: auto;
-    max-height: 80vh;
+    max-height: 88vh;
     border-left: none;
-    border-top: 1px solid rgba(204, 197, 185, 0.1);
+    border-top: 1px solid rgba(204, 197, 185, 0.2);
     border-radius: 20px 20px 0 0;
-    padding: 28px 24px 36px;
-    animation: pef-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 24px 20px 48px;
+    animation: pef-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   @keyframes pef-slide-up {

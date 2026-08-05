@@ -480,3 +480,27 @@
   flex-shrink: 0;
 }
 .pay-overpay-confirm input { cursor: pointer; accent-color: #ab2f00; }
+
+/* ── Mobile responsive bottom sheet ── */
+@media (max-width: 768px) {
+  .pay-overlay {
+    z-index: 2000;
+    align-items: flex-end;
+    justify-content: center;
+    bottom: 0;
+  }
+  .pay-panel {
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(204,197,185,0.1);
+    border-radius: 20px 20px 0 0;
+    height: auto;
+    max-height: 88vh;
+    padding-bottom: 48px;
+    animation-name: pay-slide-up;
+  }
+  @keyframes pay-slide-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+}

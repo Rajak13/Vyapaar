@@ -50,6 +50,30 @@
 }
 .sup-btn-primary:hover { background: #862300; transform: translateY(-1px); }
 
+.sup-btn-ghost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--dash-border);
+  background: transparent;
+  color: var(--df);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sup-btn-ghost:hover {
+  background: var(--dash-panel-hover);
+  border-color: var(--df);
+}
+.sup-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Summary cards ── */
 .sup-summary-row {
   display: grid;
@@ -242,6 +266,8 @@
   cursor: pointer; transition: background 0.12s, color 0.12s;
 }
 .sup-action-btn:hover { background: rgba(171,47,0,0.1); color: #ab2f00; border-color: rgba(171,47,0,0.2); }
+.sup-action-btn--wa { color: #25D366; border-color: rgba(37, 211, 102, 0.3); }
+.sup-action-btn--wa:hover { background: rgba(37, 211, 102, 0.15); color: #25D366; border-color: #25D366; }
 
 /* Skeleton */
 .sup-skeleton-row td { padding: 14px 18px; border-top: 1px solid var(--dash-border); }
@@ -402,9 +428,9 @@
   .sup-page           { padding: 20px 16px 40px; gap: 12px; }
   .sup-summary-row    { grid-template-columns: 1fr 1fr; }
 
-  /* Panel slides up from above the bottom nav (not behind it) */
-  .sup-overlay        { align-items: flex-end; justify-content: center; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 80vh; animation-name: sup-slide-up; }
+  /* Panel slides up as clean mobile bottom sheet with high z-index */
+  .sup-overlay        { z-index: 2000; align-items: flex-end; justify-content: center; bottom: 0; }
+  .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 88vh; padding-bottom: 48px; animation-name: sup-slide-up; }
   @keyframes sup-slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
   /* Extra bottom breathing room so FAB doesn't cover last row */

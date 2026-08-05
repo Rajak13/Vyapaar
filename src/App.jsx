@@ -22,14 +22,14 @@ function Ribbon() {
     >
       <path
         id="ribbonPath"
-        d="M 480 640 C 620 580 680 500 800 420 C 900 360 960 300 1060 210"
+        d="M 920 780 C 1080 720 1240 670 1380 640"
         fill="none"
         stroke="var(--orange)"
-        strokeWidth="42"
+        strokeWidth="44"
         strokeLinecap="round"
       />
       <text className="ribbon-text" fill="var(--ink)">
-        <textPath href="#ribbonPath" startOffset="0%">
+        <textPath href="#ribbonPath" startOffset="2%">
           {RIBBON_TEXT.repeat(2)}
         </textPath>
       </text>
@@ -185,7 +185,7 @@ export default function App() {
         <div className="hero-main">
           <h1 className="wordmark">Vyapaar</h1>
           <img
-            src="/hero-building.webp"
+            src="/hero-building-cutout.png"
             onError={(e) => { e.currentTarget.src = '/hero-building.png' }}
             alt="Architecture"
             className="hero-building"

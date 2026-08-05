@@ -157,10 +157,11 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
   const [lang, setLang] = useState('en')
   const L = LABELS[lang]
 
-  // Form state
-  const [supplier,       setSupplier]       = useState(initialData ? { id: initialData.supplier_id, name: initialData.supplier_name } : null)
-  const [dateAd,         setDateAd]         = useState(initialData?.date_ad?.slice(0,10) ?? '')
-  const [dateBs,         setDateBs]         = useState(initialData?.date_bs ?? '')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const [dateAd,         setDateAd]         = useState(initialData?.date_ad?.slice(0,10) ?? todayStr)
+  const [dateBs,         setDateBs]         = useState(initialData?.date_bs ?? (adToBs(todayStr) || ''))
   const [invoiceNo,      setInvoiceNo]      = useState(initialData?.invoice_no ?? '')
   const [accountHead,    setAccountHead]    = useState(initialData?.account_head ?? '')
   const [taxExempt,      setTaxExempt]      = useState(initialData?.tax_exempt_purchases ?? '')
@@ -175,7 +176,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
 
   // Auto-fill BS date when AD date changes
   useEffect(() => {
-    if (!dateAd) { setDateBs(''); return }
+    if (!dateAd) return
     const bs = adToBs(dateAd)
     if (bs) setDateBs(bs)
   }, [dateAd])
@@ -202,7 +203,6 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
   function validate() {
     const e = {}
     if (!dateAd)                 e.dateAd    = lang === 'np' ? 'मिति (इसवी) अनिवार्य छ।' : 'Date (AD) is required.'
-    if (!invoiceNo.trim())       e.invoiceNo = lang === 'np' ? 'बिजक नम्बर अनिवार्य छ।' : 'Invoice number is required.'
     if (!supplier?.name?.trim()) e.supplier  = lang === 'np' ? 'आपूर्तिकर्ता अनिवार्य छ।' : 'Supplier is required.'
     if (totalValue <= 0)         e.values    = lang === 'np' ? 'कम्तीमा एक खरिद मूल्य भर्नुहोस्।' : 'At least one purchase value must be greater than zero.'
     const checks = { taxExempt, taxable, taxImports, capitalTaxable, taxAmount }
@@ -218,10 +218,13 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     if (Object.keys(errors).length > 0) { setErrs(errors); return }
     setErrs({}); setLoading(true)
 
+    // Auto-generate bill/invoice number if left blank in Quick Mode
+    const finalInvoiceNo = invoiceNo.trim() || `BILL-${(dateBs || dateAd).replace(/\D/g, '')}-${Math.floor(100 + Math.random() * 900)}`
+
     const body = {
       date_ad:                   dateAd,
       date_bs:                   dateBs || dateAd,
-      invoice_no:                invoiceNo.trim(),
+      invoice_no:                finalInvoiceNo,
       account_head:              accountHead.trim() || undefined,
       tax_exempt_purchases:      toNum(taxExempt),
       taxable_purchases:         toNum(taxable),
@@ -277,6 +280,16 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
 
         <form className="pef-form" onSubmit={handleSubmit} noValidate>
 
+          {/* Supplier (Primary Quick Entry Input) */}
+          <Field label={L.supplier} htmlFor="supplier" error={errs.supplier} required>
+            <SupplierSearch selected={supplier} onSelect={setSupplier} error={errs.supplier} />
+          </Field>
+
+          {/* Primary Purchase Amount (Quick Entry) */}
+          <Field label={L.taxable} htmlFor="taxable" error={errs.taxable} required>
+            <NumInput id="taxable" value={taxable} onChange={e => setTaxable(e.target.value)} error={errs.taxable} />
+          </Field>
+
           {/* Date row — AD auto-converts to BS */}
           <div className="pef-row">
             <Field label={L.date_ad} htmlFor="date_ad" error={errs.dateAd} required>
@@ -288,43 +301,8 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
                 id="date_bs" type="text"
                 value={dateBs}
                 onChange={e => setDateBs(e.target.value)}
-                placeholder={dateAd ? 'Auto-filled' : 'Select AD date first'}
+                placeholder="Auto-filled BS date"
               />
-            </Field>
-          </div>
-
-          <Field label={L.invoice_no} htmlFor="invoice_no" error={errs.invoiceNo} required>
-            <input className={`pef-input${errs.invoiceNo ? ' pef-input-error' : ''}`} id="invoice_no" type="text" placeholder="e.g. INV-2081-001" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} />
-          </Field>
-
-          <Field label={L.supplier} htmlFor="supplier" error={errs.supplier} required>
-            <SupplierSearch selected={supplier} onSelect={setSupplier} error={errs.supplier} />
-          </Field>
-
-          <Field label={L.account_head} htmlFor="account_head">
-            <input className="pef-input" id="account_head" type="text" placeholder="e.g. Office Supplies" value={accountHead} onChange={e => setAccountHead(e.target.value)} />
-          </Field>
-
-          {/* Purchase values */}
-          <div className="pef-section-label">
-            {L.values_section}
-            {errs.values && <span className="pef-section-error">{errs.values}</span>}
-          </div>
-
-          <div className="pef-row">
-            <Field label={L.tax_exempt} htmlFor="tax_exempt" error={errs.taxExempt}>
-              <NumInput id="tax_exempt" value={taxExempt} onChange={e => setTaxExempt(e.target.value)} error={errs.taxExempt} />
-            </Field>
-            <Field label={L.taxable} htmlFor="taxable" error={errs.taxable}>
-              <NumInput id="taxable" value={taxable} onChange={e => setTaxable(e.target.value)} error={errs.taxable} />
-            </Field>
-          </div>
-          <div className="pef-row">
-            <Field label={L.tax_imports} htmlFor="tax_imports" error={errs.taxImports}>
-              <NumInput id="tax_imports" value={taxImports} onChange={e => setTaxImports(e.target.value)} error={errs.taxImports} />
-            </Field>
-            <Field label={L.capital_taxable} htmlFor="capital_taxable" error={errs.capitalTaxable}>
-              <NumInput id="capital_taxable" value={capitalTaxable} onChange={e => setCapitalTaxable(e.target.value)} error={errs.capitalTaxable} />
             </Field>
           </div>
 
@@ -337,6 +315,40 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
               <span>{L.auto_tax}</span>
             </label>
           </div>
+
+          {/* Advanced accordion toggle */}
+          <button
+            type="button"
+            className="pef-adv-toggle"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            <span>{showAdvanced ? '− Hide Invoice & Extra Details' : '＋ Add Invoice No, Exempt & Notes'}</span>
+          </button>
+
+          {showAdvanced && (
+            <div className="pef-adv-box">
+              <Field label={L.invoice_no} htmlFor="invoice_no" error={errs.invoiceNo}>
+                <input className="pef-input" id="invoice_no" type="text" placeholder="Auto-generated if left empty" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} />
+              </Field>
+
+              <Field label={L.account_head} htmlFor="account_head">
+                <input className="pef-input" id="account_head" type="text" placeholder="e.g. Office Supplies" value={accountHead} onChange={e => setAccountHead(e.target.value)} />
+              </Field>
+
+              <div className="pef-row">
+                <Field label={L.tax_exempt} htmlFor="tax_exempt" error={errs.taxExempt}>
+                  <NumInput id="tax_exempt" value={taxExempt} onChange={e => setTaxExempt(e.target.value)} error={errs.taxExempt} />
+                </Field>
+                <Field label={L.tax_imports} htmlFor="tax_imports" error={errs.taxImports}>
+                  <NumInput id="tax_imports" value={taxImports} onChange={e => setTaxImports(e.target.value)} error={errs.taxImports} />
+                </Field>
+              </div>
+
+              <Field label={L.capital_taxable} htmlFor="capital_taxable" error={errs.capitalTaxable}>
+                <NumInput id="capital_taxable" value={capitalTaxable} onChange={e => setCapitalTaxable(e.target.value)} error={errs.capitalTaxable} />
+              </Field>
+            </div>
+          )}
 
           {/* Live totals */}
           <div className="pef-totals">

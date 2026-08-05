@@ -12,7 +12,33 @@ function fmtRs(val) {
   return `Rs. ${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+function DownloadIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+}
+
+function exportSuppliersCSV(suppliers) {
+  if (!suppliers || suppliers.length === 0) return
+  const headers = ['Supplier Name', 'PAN', 'Phone', 'Address', 'Total Purchased (Rs)', 'Total Paid (Rs)', 'Balance Due (Rs)', 'Status']
+  const rows = suppliers.map(s => [
+    `"${s.supplier_name || ''}"`,
+    `"${s.supplier_pan || ''}"`,
+    `"${s.phone || ''}"`,
+    `"${s.address || ''}"`,
+    s.total_purchased || 0,
+    s.total_paid || 0,
+    s.balance_due || 0,
+    `"${s.is_active ? 'Active' : 'Inactive'}"`
+  ])
+  
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement('a')
+  link.setAttribute('href', encodedUri)
+  link.setAttribute('download', `Vyapaar_Suppliers_Ledger_${new Date().toISOString().slice(0,10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
 function PlusIcon()   { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> }
 function EditIcon()   { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> }
 function SearchIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> }
@@ -20,6 +46,28 @@ function CloseIcon()  { return <svg width="16" height="16" viewBox="0 0 24 24" f
 function ArrowIcon()  { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> }
 function DeleteIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+}
+function WhatsAppIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.237a9.96 9.96 0 0 0 4.779 1.217h.004c5.505 0 9.988-4.478 9.989-9.985 0-2.669-1.038-5.176-2.925-7.062A9.92 9.92 0 0 0 12.012 2zm5.783 14.156c-.244.686-1.42 1.309-1.956 1.365-.494.052-1.139.083-3.267-.798-2.72-1.127-4.477-3.896-4.613-4.077-.135-.181-1.107-1.472-1.107-2.808 0-1.336.7-1.992.948-2.261.248-.268.541-.335.722-.335.18 0 .36.002.518.009.169.007.396-.064.62.473.23.551.789 1.926.857 2.064.068.138.113.3.023.477-.09.178-.135.291-.27.452-.136.16-.285.358-.407.481-.136.136-.277.284-.119.555.158.27.702 1.157 1.507 1.874 1.036.923 1.91 1.209 2.181 1.344.27.135.428.113.586-.068.158-.18.677-.788.857-1.058.18-.27.36-.225.608-.135.248.09 1.577.743 1.847.878.27.135.45.203.518.315.068.113.068.653-.176 1.339z" />
+    </svg>
+  )
+}
+
+function shareWhatsApp(s) {
+  const phone = (s.phone ?? '').replace(/\D/g, '')
+  const due = parseFloat(s.balance_due ?? 0)
+  const purchased = parseFloat(s.total_purchased ?? 0)
+  const paid = parseFloat(s.total_paid ?? 0)
+  
+  const text = `Namaste ${s.supplier_name},\n\nHere is your ledger statement with Vyapaaar:\n• Total Purchased: ${fmtRs(purchased)}\n• Total Paid: ${fmtRs(paid)}\n• Current Balance Due: ${fmtRs(due)}\n\nThank you!`
+  const encodedText = encodeURIComponent(text)
+  const waUrl = phone
+    ? `https://wa.me/${phone.startsWith('977') ? phone : '977' + phone}?text=${encodedText}`
+    : `https://wa.me/?text=${encodedText}`
+
+  window.open(waUrl, '_blank')
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -34,13 +82,14 @@ function SkeletonRow() {
 // ── Supplier form (slide-in panel) ────────────────────────────────────────────
 function SupplierForm({ supplier, onClose, onSuccess }) {
   const isEdit = Boolean(supplier?.id)
-  const [name,     setName]     = useState(supplier?.supplier_name ?? supplier?.name ?? '')
-  const [pan,      setPan]      = useState(supplier?.supplier_pan  ?? supplier?.pan  ?? '')
-  const [phone,    setPhone]    = useState(supplier?.phone   ?? '')
-  const [address,  setAddress]  = useState(supplier?.address ?? '')
-  const [isActive, setIsActive] = useState(supplier?.is_active !== false)
-  const [loading,  setLoading]  = useState(false)
-  const [errs,     setErrs]     = useState({})
+  const [name,           setName]           = useState(supplier?.supplier_name ?? supplier?.name ?? '')
+  const [pan,            setPan]            = useState(supplier?.supplier_pan  ?? supplier?.pan  ?? '')
+  const [phone,          setPhone]          = useState(supplier?.phone   ?? '')
+  const [address,        setAddress]        = useState(supplier?.address ?? '')
+  const [openingBalance, setOpeningBalance] = useState(supplier?.opening_balance ?? '')
+  const [isActive,       setIsActive]       = useState(supplier?.is_active !== false)
+  const [loading,        setLoading]        = useState(false)
+  const [errs,           setErrs]           = useState({})
 
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose() }
@@ -63,11 +112,12 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
     setErrs({}); setLoading(true)
 
     const body = {
-      name:      name.trim(),
-      pan:       pan.trim()     || undefined,
-      phone:     phone.trim()   || undefined,
-      address:   address.trim() || undefined,
-      is_active: isActive,
+      name:            name.trim(),
+      pan:             pan.trim()     || undefined,
+      phone:           phone.trim()   || undefined,
+      address:         address.trim() || undefined,
+      opening_balance: parseFloat(openingBalance) || 0,
+      is_active:       isActive,
     }
 
     const url    = isEdit ? `${API_URL}/api/suppliers/${supplier.supplier_id ?? supplier.id}` : `${API_URL}/api/suppliers`
@@ -118,6 +168,11 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
           <div className="sup-field">
             <label className="sup-label" htmlFor="sup_address">ADDRESS</label>
             <input className="sup-input" id="sup_address" type="text" placeholder="City / address" value={address} onChange={e => setAddress(e.target.value)} />
+          </div>
+
+          <div className="sup-field">
+            <label className="sup-label" htmlFor="sup_ob">OPENING BALANCE (Rs.)</label>
+            <input className="sup-input" id="sup_ob" type="number" min="0" step="0.01" placeholder="Initial balance from paper notebook" value={openingBalance} onChange={e => setOpeningBalance(e.target.value)} />
           </div>
 
           {isEdit && (
@@ -212,9 +267,14 @@ export default function Suppliers({ onToast }) {
           <h2 className="sup-title">Suppliers</h2>
           <p className="sup-subtitle">{suppliers.length} {suppliers.length === 1 ? 'supplier' : 'suppliers'} registered</p>
         </div>
-        <button className="sup-btn-primary" onClick={() => { setEditTarget(null); setShowForm(true) }}>
-          <PlusIcon /><span>Add Supplier</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="sup-btn-ghost" onClick={() => exportSuppliersCSV(suppliers)} disabled={suppliers.length === 0}>
+            <DownloadIcon /><span>Export Excel</span>
+          </button>
+          <button className="sup-btn-primary" onClick={() => { setEditTarget(null); setShowForm(true) }}>
+            <PlusIcon /><span>Add Supplier</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -306,6 +366,9 @@ export default function Suppliers({ onToast }) {
                   </span>
                 </td>
                 <td className="sup-col-actions">
+                  <button className="sup-action-btn sup-action-btn--wa" onClick={() => shareWhatsApp(s)} title="Share WhatsApp statement">
+                    <WhatsAppIcon />
+                  </button>
                   <button className="sup-action-btn" onClick={() => openEdit(s)} title="Edit supplier">
                     <EditIcon />
                   </button>
