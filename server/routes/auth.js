@@ -130,8 +130,8 @@ router.post('/logout', (_req, res) => {
 
 // ---------- GET /auth/me ----------
 router.get('/me', async (req, res) => {
-  const token = req.cookies?.vyapaaar_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
-  if (!token) return res.status(401).json({ error: 'Not authenticated.' })
+  let token = req.cookies?.vyapaaar_token || req.headers.authorization?.replace(/^Bearer\s+/i, '')
+  if (!token || token === 'null' || token === 'undefined') return res.status(401).json({ error: 'Not authenticated.' })
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET)

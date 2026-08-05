@@ -11,7 +11,9 @@
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
 export async function apiFetch(path, options = {}) {
-  const token = localStorage.getItem('vyapaaar_token')
+  const rawToken = localStorage.getItem('vyapaaar_token')
+  const token = (rawToken && rawToken !== 'undefined' && rawToken !== 'null') ? rawToken : null
+
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     ...options,
