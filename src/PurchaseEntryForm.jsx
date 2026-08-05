@@ -159,6 +159,13 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
 
   const [showAdvanced, setShowAdvanced] = useState(false)
 
+  // Supplier state — { id, name } for existing, { name, isNew: true } for new
+  const [supplier, setSupplier] = useState(
+    initialData?.supplier_id
+      ? { id: initialData.supplier_id, name: initialData.supplier_name ?? '' }
+      : null
+  )
+
   const todayStr = new Date().toISOString().slice(0, 10)
   const [dateAd,         setDateAd]         = useState(initialData?.date_ad?.slice(0,10) ?? todayStr)
   const [dateBs,         setDateBs]         = useState(initialData?.date_bs ?? (adToBs(todayStr) || ''))
