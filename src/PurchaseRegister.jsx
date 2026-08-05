@@ -312,6 +312,7 @@ export default function PurchaseRegister({ theme, onToast }) {
               </tr>
             ))}
           </tbody>
+        </table>
       </div>
 
       {/* ── Mobile card list (visible on <768px via CSS) ── */}

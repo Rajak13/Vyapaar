@@ -85,7 +85,16 @@ router.post('/register', async (req, res) => {
       [email.toLowerCase().trim(), password_hash, trimmedName]
     )
 
-    return setCookieAndRespond(res, req, rows[0])
+    const newUser = rows[0]
+
+    // Auto-create default business profile for the new user
+    await pool.query(
+      `INSERT INTO business_profile (taxpayer_name, user_id)
+       VALUES ($1, $2)`,
+      [trimmedName, newUser.id]
+    ).catch(err => console.error('[auth/register] bp insert error:', err))
+
+    return setCookieAndRespond(res, req, newUser)
   } catch (err) {
     console.error('[auth/register]', err)
     return res.status(500).json({ error: 'Registration failed. Please try again.' })
