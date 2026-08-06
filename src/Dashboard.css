@@ -933,17 +933,21 @@
 @media (max-width: 768px) {
   .dash-page    { padding: 0; }
   .dash-container { border-radius: 0; min-height: 100vh; }
-  .dash-topnav  { padding: 12px 16px; gap: 10px; }
-  .dash-search  { display: none; }
+  .dash-topnav  { padding: 10px 14px; gap: 8px; flex-wrap: nowrap; }
+  /* Hide search and theme toggle — reduces clutter */
+  .dash-search       { display: none; }
+  .dash-theme-toggle { display: none; }
   .dash-user-sub, .dash-user-name { display: none; }
   .dash-user-pill { padding: 4px; border-radius: 50%; }
+  /* Logout button 44px tap target */
+  .dash-logout-btn { width: 44px; height: 44px; }
 
   /* Body: no sidebar column — sidebar replaced by bottom tab bar */
   .dash-body {
     grid-template-columns: 1fr;
-    padding: 0 16px 96px; /* generous bottom pad for tab bar */
+    padding: 0 16px 96px;
   }
-  .dash-sidebar { display: none; } /* hidden — replaced by bottom tab bar */
+  .dash-sidebar { display: none; }
 
   .dash-stats-row {
     display: grid;
@@ -958,6 +962,34 @@
   .dash-stat-accent {
     grid-column: span 2;
   }
+
+  /* Bento grid rows collapse to single column */
+  .bento-grid-row-1,
+  .bento-grid-row-2,
+  .bento-grid-row-3 {
+    grid-template-columns: 1fr;
+  }
+  /* Metric stack — 2 cards per row on mobile (not 3, numbers need space) */
+  .bento-metric-stack {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  /* Last card spans full width */
+  .bento-metric-stack .bento-mini-card:last-child {
+    grid-column: span 2;
+  }
+  .bento-mini-card { padding: 14px; }
+  .bento-mini-val  { font-size: 16px; }
+  /* Chart: prevent SVG from overflowing card */
+  .bento-chart-body { overflow: hidden; }
+  .bento-svg-chart  { display: block; width: 100%; height: auto; min-height: 100px; }
+
+  /* Welcome row action buttons — hide extra two, keep Add Entry */
+  .dash-header-actions .dash-action-btn-outline { display: none; }
+  .dash-header-actions .dash-action-btn-seal { min-height: 44px; }
+  .dash-header-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+  .dash-welcome-row { flex-wrap: wrap; gap: 10px; }
   .dash-insights-row { grid-template-columns: 1fr; }
   .dash-welcome-row  { gap: 12px; margin-bottom: 16px; }
   .dash-view-entries-btn span { display: inline; }
@@ -1072,6 +1104,12 @@
   .dash-mobile-fab:active {
     transform: translateY(-12px) scale(0.95);
     background: #ab2f00;
+  }
+
+  .dash-mobile-fab--hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0) scale(0.8);
   }
 }
 
@@ -1698,5 +1736,146 @@
   }
   .bento-quick-action, .bento-goal-card {
     grid-column: span 1;
+  }
+}
+
+/* Mobile-only single theme toggle button — hidden on desktop */
+.dash-theme-toggle-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .dash-theme-toggle-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--dash-border);
+    background: var(--dc);
+    color: var(--dm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .dash-theme-toggle-mobile:hover { background: var(--dbd); color: var(--df); }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Mobile FAB Action Sheet
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Dim backdrop — hidden everywhere by default */
+.fab-backdrop {
+  display: none;
+}
+
+/* Action sheet — hidden on desktop, only styled on mobile */
+.fab-action-sheet {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .fab-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 149;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: fab-fade-in 0.15s ease;
+  }
+
+  @keyframes fab-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Sheet — visible but off-screen by default on mobile, slides up when open */
+  .fab-action-sheet {
+    display: flex;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 12px);
+    z-index: 150;
+    background: var(--dc);
+    border: 1px solid var(--dash-border);
+    border-radius: 20px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fab-action-sheet--open {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .fab-action-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fab-action-item:hover,
+  .fab-action-item:focus-visible {
+    background: var(--dbd);
+  }
+
+  .fab-action-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .fab-action-icon--purchase { background: rgba(171, 47, 0, 0.12); color: #ab2f00; }
+  .fab-action-icon--payment  { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+  .fab-action-icon--supplier { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+
+  .dash-page.app-dark .fab-action-icon--purchase { background: rgba(235, 94, 40, 0.2); color: #eb5e28; }
+  .dash-page.app-dark .fab-action-icon--payment  { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+  .dash-page.app-dark .fab-action-icon--supplier { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+  .fab-action-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .fab-action-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--df);
+    line-height: 1.2;
+  }
+
+  .fab-action-sub {
+    font-size: 11px;
+    color: var(--dm);
+    font-weight: 400;
   }
 }

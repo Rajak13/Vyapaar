@@ -429,7 +429,31 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sup-page           { padding: 20px 16px 40px; gap: 12px; }
-  .sup-summary-row    { grid-template-columns: 1fr 1fr; }
+
+  /* Compact stat strip — horizontal scrolling chips */
+  .sup-summary-row {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+  .sup-summary-row::-webkit-scrollbar { display: none; }
+  .sup-summary-card {
+    flex-shrink: 0;
+    min-width: 130px;
+    padding: 10px 14px;
+    gap: 4px;
+    border-radius: 12px;
+  }
+  .sup-summary-value { font-size: 16px; }
+  .sup-summary-label { font-size: 9px; }
+  .sup-summary-accent { min-width: 150px; }
+
+  /* 44px tap targets */
+  .sup-action-btn { width: 36px; height: 36px; }
 
   /* Panel slides up as clean mobile bottom sheet with high z-index */
   .sup-overlay        { z-index: 2000; align-items: flex-end; justify-content: center; bottom: 0; }
@@ -507,8 +531,21 @@
     gap: 8px;
   }
 
-  /* Hide header button on mobile — replaced by FAB */
-  .sup-header .sup-btn-primary { display: none; }
+  .sup-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sup-header .sup-btn-ghost { display: none; }
+  .sup-header .sup-btn-primary { display: inline-flex; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+
+  .sup-page.is-refreshing .sup-table-wrap,
+  .sup-page.is-refreshing .sup-mobile-cards {
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+  }
 
   /* Floating action button — pinned above the mobile bottom nav */
   .sup-fab {

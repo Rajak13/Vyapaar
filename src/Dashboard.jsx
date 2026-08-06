@@ -4,6 +4,7 @@ import {
   Q,
   fetchStats, fetchRecentEntries, fetchSupplierBals,
   fetchSupplierList, fetchPaymentStats, fetchPayments, fetchEntries,
+  fetchCharts,
 } from './api'
 import './Dashboard.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
@@ -24,6 +25,275 @@ function fmtRs(val) {
   const n = parseFloat(val)
   if (isNaN(n)) return 'Rs. 0'
   return `Rs. ${n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chart helper components ─────────────────────────────────────────────────────
+
+// 1. Monthly bar chart — purchases (orange) + VAT (green) stacked per month
+function MonthlyBarChart({ data }) {
+  if (!data || data.length === 0) {
+    return <div className="bento-chart-body bento-chart-empty">No purchase data yet.</div>
+  }
+  const maxVal = Math.max(...data.map(d => d.total_purchased), 1)
+  const W = 500, H = 140, BAR_W = 28, BOTTOM = 20
+  const slotW = W / data.length
+  return (
+    <div className="bento-chart-body">
+      <svg className="bento-svg-chart" viewBox={`0 0 ${W} ${H + BOTTOM}`} preserveAspectRatio="none">
+        {[0.25, 0.5, 0.75, 1].map(f => (
+          <line key={f} x1="0" y1={H * (1 - f)} x2={W} y2={H * (1 - f)}
+            stroke="var(--dash-border)" strokeDasharray="3 3" />
+        ))}
+        {data.map((d, i) => {
+          const cx     = slotW * i + slotW / 2
+          const purPct = d.total_purchased / maxVal
+          const taxPct = d.total_tax / maxVal
+          const purH   = Math.max(purPct * H, 2)
+          const taxH   = Math.max(taxPct * H * 0.6, 2)
+          const isLast = i === data.length - 1
+          return (
+            <g key={d.month}>
+              <rect x={cx - BAR_W / 2} y={H - purH} width={BAR_W} height={purH}
+                rx="4" fill="#E04F16" opacity={isLast ? 1 : 0.75} />
+              <rect x={cx - BAR_W / 2} y={H - purH - taxH} width={BAR_W} height={taxH}
+                rx="3" fill="#34d399" opacity="0.9" />
+              <text x={cx} y={H + 14} textAnchor="middle"
+                fill={isLast ? 'var(--df)' : 'var(--dm)'}
+                fontWeight={isLast ? 'bold' : 'normal'} fontSize="10">
+                {d.month_label}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
+// Colour palette for categories / suppliers
+const CAT_COLORS = ['#E04F16','#f59e0b','#3b82f6','#10b981','#8b5cf6','#ec4899','#6366f1']
+
+// 2. Account-head (category) breakdown — horizontal bar chart
+function AccountHeadBreakdown({ data }) {
+  const total = data.reduce((s, d) => s + d.total, 0) || 1
+  return (
+    <div className="dash-card bento-limit-card">
+      <div className="bento-card-title" style={{ marginBottom: 14 }}>Spend by Category</div>
+      {data.length === 0
+        ? <p style={{ fontSize: 12, color: 'var(--dm)' }}>No categorised entries yet.</p>
+        : data.map((d, i) => {
+            const pct = Math.round((d.total / total) * 100)
+            return (
+              <div key={d.category} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--df)' }}>{d.category}</span>
+                  <span style={{ fontSize: 11, color: 'var(--dm)' }}>{pct}% · {fmtRs(d.total)}</span>
+                </div>
+                <div className="dash-progress-track">
+                  <div className="dash-progress-bar"
+                    style={{ width: `${pct}%`, background: CAT_COLORS[i % CAT_COLORS.length] }} />
+                </div>
+              </div>
+            )
+          })
+      }
+    </div>
+  )
+}
+
+// 3. Payment method split — pill badges + mini bars
+function PaymentMethodSplit({ data }) {
+  const total = data.reduce((s, d) => s + d.total, 0) || 1
+  const METHOD_LABELS = { cash: 'Cash', online: 'Online', cheque: 'Cheque' }
+  const METHOD_COLORS = { cash: '#10b981', online: '#3b82f6', cheque: '#f59e0b' }
+  return (
+    <div className="dash-card bento-tip-card" style={{ justifyContent: 'flex-start', gap: 16 }}>
+      <div className="bento-card-title">Payment Methods</div>
+      {data.length === 0
+        ? <p style={{ fontSize: 12, color: 'var(--dm)' }}>No payments recorded yet.</p>
+        : <>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+              {data.map(d => (
+                <span key={d.method} style={{
+                  padding: '4px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+                  background: `${METHOD_COLORS[d.method] ?? '#888'}22`,
+                  color: METHOD_COLORS[d.method] ?? '#888',
+                  border: `1.5px solid ${METHOD_COLORS[d.method] ?? '#888'}`,
+                }}>
+                  {METHOD_LABELS[d.method] ?? d.method} — {Math.round((d.total / total) * 100)}%
+                </span>
+              ))}
+            </div>
+            {data.map((d, i) => {
+              const pct = Math.round((d.total / total) * 100)
+              return (
+                <div key={d.method} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--df)' }}>
+                      {METHOD_LABELS[d.method] ?? d.method}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--dm)' }}>{fmtRs(d.total)}</span>
+                  </div>
+                  <div className="dash-progress-track">
+                    <div className="dash-progress-bar"
+                      style={{ width: `${pct}%`, background: METHOD_COLORS[d.method] ?? '#888' }} />
+                  </div>
+                </div>
+              )
+            })}
+          </>
+      }
+    </div>
+  )
+}
+
+// 4. Top 5 suppliers — horizontal bars
+function TopSuppliersChart({ data, onNav }) {
+  const max = Math.max(...data.map(d => d.total_purchased), 1)
+  return (
+    <div className="dash-card bento-cost-card">
+      <div className="bento-card-header" style={{ marginBottom: 14 }}>
+        <div>
+          <div className="bento-card-title">Top Suppliers</div>
+          <div className="bento-card-sub">By total purchases</div>
+        </div>
+        <button onClick={onNav} style={{
+          background: 'none', border: 'none', color: 'var(--orange)',
+          fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        }}>View all →</button>
+      </div>
+      {data.length === 0
+        ? <p style={{ fontSize: 12, color: 'var(--dm)' }}>No supplier data yet.</p>
+        : data.map((d, i) => {
+            const pct = Math.round((d.total_purchased / max) * 100)
+            return (
+              <div key={d.supplier_name} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--df)',
+                    maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {d.supplier_name}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--dm)' }}>{fmtRs(d.total_purchased)}</span>
+                </div>
+                <div className="dash-progress-track">
+                  <div className="dash-progress-bar"
+                    style={{ width: `${pct}%`, background: CAT_COLORS[i % CAT_COLORS.length] }} />
+                </div>
+              </div>
+            )
+          })
+      }
+    </div>
+  )
+}
+
+// 5. Entry paid-status donut (SVG arc)
+function EntryStatusDonut({ data, onNav }) {
+  const map = { paid: 0, partial: 0, pending: 0 }
+  data.forEach(d => { map[d.status] = d.count })
+  const total = map.paid + map.partial + map.pending || 1
+  const paidPct = map.paid / total
+
+  // SVG arc helper
+  function arc(startPct, endPct, r, cx, cy) {
+    const a1 = (startPct * 2 * Math.PI) - Math.PI / 2
+    const a2 = (endPct   * 2 * Math.PI) - Math.PI / 2
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1)
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2)
+    const large = endPct - startPct > 0.5 ? 1 : 0
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`
+  }
+
+  const partialPct = map.partial / total
+  const pendingPct = map.pending / total
+  const segs = [
+    { pct: paidPct,    color: '#10b981', label: 'Paid'    },
+    { pct: partialPct, color: '#f59e0b', label: 'Partial' },
+    { pct: pendingPct, color: '#8A8578', label: 'Pending' },
+  ]
+  let cursor = 0
+
+  return (
+    <div className="dash-card bento-gauge-card">
+      <div className="bento-card-header" style={{ marginBottom: 8 }}>
+        <div>
+          <div className="bento-card-title">Invoice Status</div>
+          <div className="bento-card-sub">{total} total entries</div>
+        </div>
+        <button onClick={onNav} style={{
+          background: 'none', border: 'none', color: 'var(--orange)',
+          fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        }}>View →</button>
+      </div>
+      <div className="bento-gauge-body">
+        <svg viewBox="0 0 120 120" width="120" height="120">
+          {segs.map(seg => {
+            if (seg.pct <= 0) { cursor += seg.pct; return null }
+            const d = arc(cursor, cursor + seg.pct, 46, 60, 60)
+            cursor += seg.pct
+            return <path key={seg.label} d={d} fill="none"
+              stroke={seg.color} strokeWidth="16" strokeLinecap="butt" />
+          })}
+          <text x="60" y="56" textAnchor="middle" fill="var(--df)" fontSize="18" fontWeight="bold">
+            {Math.round(paidPct * 100)}%
+          </text>
+          <text x="60" y="70" textAnchor="middle" fill="var(--dm)" fontSize="9">paid</text>
+        </svg>
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+        {segs.map(seg => (
+          <span key={seg.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--df)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+            {seg.label}: {map[seg.label.toLowerCase()]}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// 6. Tax vs Purchases — last 6 months dual mini-line sparkline
+function TaxVsPurchases({ data }) {
+  const slice = data.slice(-6)
+  if (slice.length < 2) {
+    return (
+      <div className="dash-card bento-goal-card">
+        <div className="bento-card-title" style={{ marginBottom: 8 }}>Tax vs Purchases</div>
+        <p style={{ fontSize: 12, color: 'var(--dm)' }}>Need at least 2 months of data.</p>
+      </div>
+    )
+  }
+  const maxP = Math.max(...slice.map(d => d.total_purchased), 1)
+  const W = 200, H = 80
+  const xStep = W / (slice.length - 1)
+
+  function points(key, max) {
+    return slice.map((d, i) => `${i * xStep},${H - (d[key] / max) * H}`).join(' ')
+  }
+
+  return (
+    <div className="dash-card bento-goal-card">
+      <div className="bento-card-header" style={{ marginBottom: 10 }}>
+        <div className="bento-card-title">Tax vs Purchases</div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: 'visible' }}>
+        <polyline points={points('total_purchased', maxP)}
+          fill="none" stroke="#E04F16" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={points('total_tax', maxP)}
+          fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+        {slice.map(d => (
+          <span key={d.month} style={{ fontSize: 10, color: 'var(--dm)' }}>{d.month_label}</span>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+        <span style={{ fontSize: 11, color: '#E04F16', fontWeight: 600 }}>● Purchases</span>
+        <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>● VAT</span>
+      </div>
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,6 +358,11 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
   )
   const [showEntryForm, setShowEntryForm] = useState(false)
   const [searchQuery,   setSearchQuery]   = useState('')
+  // Counters incremented by the mobile FAB — each child watches its own counter
+  const [payFormCount,  setPayFormCount]  = useState(0)
+  const [supFormCount,  setSupFormCount]  = useState(0)
+  // Action sheet for the mobile centre FAB
+  const [showFabMenu,   setShowFabMenu]   = useState(false)
 
   const qc = useQueryClient()
 
@@ -111,6 +386,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
   const { data: statsData,    isLoading: loadingStats    } = useQuery({ queryKey: Q.stats(),         queryFn: fetchStats,         enabled: isAuth })
   const { data: entriesData,  isLoading: loadingEntries  } = useQuery({ queryKey: Q.recentEntries(), queryFn: fetchRecentEntries, enabled: isAuth })
   const { data: balancesData, isLoading: loadingBalances } = useQuery({ queryKey: Q.supplierBals(),  queryFn: fetchSupplierBals,  enabled: isAuth })
+  const { data: chartsData                               } = useQuery({ queryKey: Q.charts(),        queryFn: fetchCharts,        enabled: isAuth })
 
   const loadingData = loadingStats || loadingEntries || loadingBalances
 
@@ -240,6 +516,15 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               <button className={`dash-toggle-btn${theme === 'dark'  ? ' active' : ''}`} onClick={() => onThemeChange('dark')}  aria-label="Dark theme"><MoonIcon /></button>
             </div>
 
+            {/* Mobile-only single-button theme toggle (shown when the pill above is hidden) */}
+            <button
+              className="dash-theme-toggle-mobile"
+              onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+
             <div className="dash-user-pill">
               <div className="dash-avatar">{fullName[0]?.toUpperCase() ?? '?'}</div>
               <div>
@@ -299,11 +584,11 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             )}
 
             {activeNav === 'suppliers' && (
-              <Suppliers onToast={onToast} />
+              <Suppliers onToast={onToast} openForm={supFormCount} />
             )}
 
             {activeNav === 'payments' && (
-              <Payments onToast={onToast} />
+              <Payments onToast={onToast} openForm={payFormCount} />
             )}
 
             {activeNav === 'settings' && (
@@ -320,226 +605,64 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="dash-greeting-line">{greeting},</div>
                   <div className="dash-greeting-name">{fullName}</div>
                 </div>
-
-                {/* Top Header Quick Action Bar (Visible without scrolling) */}
                 <div className="dash-header-actions">
-                  <button className="dash-action-btn-seal" onClick={() => setShowEntryForm(true)}>
-                    <span>+ Add Entry</span>
-                  </button>
-                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('payments')}>
-                    <span>Record Payment</span>
-                  </button>
-                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('suppliers')}>
-                    <span>Add Supplier</span>
-                  </button>
+                  <button className="dash-action-btn-seal" onClick={() => setShowEntryForm(true)}>+ Add Entry</button>
+                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('payments')}>Record Payment</button>
+                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('suppliers')}>Add Supplier</button>
                 </div>
               </div>
 
-              {/* ── ROW 1: HERO ANALYTICS (8:4 Canvas Ratio) ── */}
+              {/* ── ROW 1: Monthly Purchases Trend + KPI Stack ── */}
               <div className="bento-grid-row-1">
-                {/* Main Interactive Purchases Hero Chart (8 columns) */}
                 <div className="dash-card bento-hero-chart">
                   <div className="bento-chart-header">
                     <div>
-                      <div className="bento-chart-eyebrow">Purchases Overview</div>
+                      <div className="bento-chart-eyebrow">Monthly Purchases Trend</div>
                       <div className="bento-chart-amount">{fmtRs(stats.totalPurchasesFY)}</div>
-                      <div className="bento-chart-sub">Current fiscal year expenditure trend</div>
-                    </div>
-                    <div className="bento-chart-controls">
-                      <div className="bento-period-pills">
-                        <button className={`bento-period-btn${chartPeriod === '7d' ? ' active' : ''}`} onClick={() => setChartPeriod('7d')}>7d</button>
-                        <button className={`bento-period-btn${chartPeriod === '30d' ? ' active' : ''}`} onClick={() => setChartPeriod('30d')}>30d</button>
-                        <button className={`bento-period-btn${chartPeriod === '1y' ? ' active' : ''}`} onClick={() => setChartPeriod('1y')}>1y</button>
-                      </div>
+                      <div className="bento-chart-sub">Last 8 months — purchases vs VAT</div>
                     </div>
                   </div>
-
-                  {/* SVG Stacked Bar Chart with Slim 24px Bars & Ample Breathing Room */}
-                  <div className="bento-chart-body">
-                    <svg className="bento-svg-chart" viewBox="0 0 500 160" preserveAspectRatio="none">
-                      <line x1="0" y1="30" x2="500" y2="30" stroke="var(--dash-border)" strokeDasharray="3 3"/>
-                      <line x1="0" y1="70" x2="500" y2="70" stroke="var(--dash-border)" strokeDasharray="3 3"/>
-                      <line x1="0" y1="110" x2="500" y2="110" stroke="var(--dash-border)" strokeDasharray="3 3"/>
-                      <line x1="0" y1="140" x2="500" y2="140" stroke="var(--dash-border)"/>
-
-                      <rect x="40" y="60" width="24" height="80" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="40" y="42" width="24" height="18" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="52" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sun</text>
-
-                      <rect x="105" y="80" width="24" height="60" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="105" y="67" width="24" height="13" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="117" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Mon</text>
-
-                      <rect x="170" y="50" width="24" height="90" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="170" y="32" width="24" height="18" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="182" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Tue</text>
-
-                      <rect x="235" y="30" width="24" height="110" rx="4" fill="#E04F16"/>
-                      <rect x="235" y="14" width="24" height="16" rx="3" fill="#34d399"/>
-                      <text x="247" y="155" textAnchor="middle" fill="var(--df)" fontWeight="bold" fontSize="10">Wed</text>
-
-                      <rect x="300" y="70" width="24" height="70" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="300" y="57" width="24" height="13" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="312" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Thu</text>
-
-                      <rect x="365" y="90" width="24" height="50" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="365" y="80" width="24" height="10" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="377" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Fri</text>
-
-                      <rect x="430" y="45" width="24" height="95" rx="4" fill="#E04F16" opacity="0.85"/>
-                      <rect x="430" y="30" width="24" height="15" rx="3" fill="#34d399" opacity="0.9"/>
-                      <text x="442" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sat</text>
-                    </svg>
-                  </div>
-
+                  <MonthlyBarChart data={chartsData?.monthly ?? []} />
                   <div className="bento-chart-legend">
-                    <span className="legend-item"><span className="legend-dot dot-orange" />Purchases Amount</span>
-                    <span className="legend-item"><span className="legend-dot dot-green" />VAT Credit (13%)</span>
+                    <span className="legend-item"><span className="legend-dot dot-orange" />Purchases</span>
+                    <span className="legend-item"><span className="legend-dot dot-green" />VAT (13%)</span>
                   </div>
                 </div>
 
-                {/* Secondary Vertical Metric Stack (4 columns) */}
                 <div className="bento-metric-stack">
                   <div className="dash-card bento-mini-card" onClick={() => handleNavClick('register')}>
                     <span className="bento-mini-label">Total Purchases (FY)</span>
                     <span className="bento-mini-val">{fmtRs(stats.totalPurchasesFY)}</span>
-                    <span className="bento-trend-badge trend-up">↑ 5.1% vs last month</span>
+                    <span className="bento-trend-badge trend-neutral">{stats.entriesThisMonth} entries this month</span>
                   </div>
-
                   <div className="dash-card bento-mini-card">
-                    <span className="bento-mini-label">Tax Liability (13% VAT)</span>
+                    <span className="bento-mini-label">VAT Collected (13%)</span>
                     <span className="bento-mini-val">{fmtRs(stats.taxTotal)}</span>
-                    <span className="bento-trend-badge trend-neutral">Accumulated VAT credit</span>
+                    <span className="bento-trend-badge trend-neutral">
+                      {stats.totalPurchasesFY > 0
+                        ? `${((stats.taxTotal / stats.totalPurchasesFY) * 100).toFixed(1)}% of total spend`
+                        : 'No purchases yet'}
+                    </span>
                   </div>
-
                   <div className="dash-card bento-mini-card" onClick={() => handleNavClick('suppliers')}>
                     <span className="bento-mini-label">Payable Dues</span>
                     <span className="bento-mini-val">{fmtRs(stats.pendingPayments)}</span>
-                    <span className="bento-trend-badge trend-warn">Payable to {stats.activeSuppliers} parties</span>
+                    <span className="bento-trend-badge trend-warn">Across {stats.activeSuppliers} active parties</span>
                   </div>
                 </div>
               </div>
 
-              {/* ── ROW 2: SPEND LIMIT & TAX OPTIMIZATION BANNERS ── */}
+              {/* ── ROW 2: Spend by Category + Payment Method Split ── */}
               <div className="bento-grid-row-2">
-                {/* Spending Limit / Budget Tracker */}
-                <div className="dash-card bento-limit-card">
-                  <div className="bento-limit-header">
-                    <div>
-                      <div className="bento-card-title">Monthly Spending Limit</div>
-                      <div className="bento-limit-sub">{fmtRs(stats.totalPurchasesFY)} spent of Rs. 5,00,000 Budget</div>
-                    </div>
-                    <span className="bento-edit-icon">✎</span>
-                  </div>
-                  <div className="bento-limit-bar-wrap">
-                    <div className="bento-limit-bar-fill" style={{
-                      width: `${Math.min(100, Math.round((parseFloat(stats.totalPurchasesFY) / 500000) * 100))}%`
-                    }} />
-                  </div>
-                  <div className="bento-limit-labels">
-                    <span className="bento-limit-curr">{fmtRs(stats.totalPurchasesFY)}</span>
-                    <span className="bento-limit-target">Rs. 5,00,000 Threshold</span>
-                  </div>
-                </div>
-
-                {/* Tax Optimization Tip Banner */}
-                <div className="dash-card bento-tip-card">
-                  <div className="bento-tip-content">
-                    <div className="bento-tip-eyebrow">Tax Advisory</div>
-                    <div className="bento-tip-title">Optimize your budget with quick tax tips</div>
-                    <p className="bento-tip-body">Start preparing for 2083/084 tax season by saving 10-15% on deductions.</p>
-                    <button className="bento-tip-link" onClick={() => handleNavClick('settings')}>
-                      <span>Read more</span>
-                      <ChevronIcon />
-                    </button>
-                  </div>
-                </div>
+                <AccountHeadBreakdown data={chartsData?.accountHeads ?? []} />
+                <PaymentMethodSplit   data={chartsData?.paymentMethods ?? []} />
               </div>
 
-              {/* ── ROW 3: ADVANCED DATA VISUALIZATIONS (3 Equal Height Cards) ── */}
+              {/* ── ROW 3: Top Suppliers + Entry Status + Tax Trend ── */}
               <div className="bento-grid-row-3">
-                {/* Card 1: Cost Analysis / Category Breakdown */}
-                <div className="dash-card bento-cost-card">
-                  <div className="bento-card-header">
-                    <div>
-                      <div className="bento-card-title">Cost Analysis</div>
-                      <div className="bento-card-sub">Expenditure Category Breakdown</div>
-                    </div>
-                    <span className="bento-cost-val">{fmtRs(stats.totalPurchasesFY)}</span>
-                  </div>
-
-                  <div className="bento-segmented-bar">
-                    <div className="bento-segment seg-1" style={{ width: '45%' }} title="Inventory (45%)" />
-                    <div className="bento-segment seg-2" style={{ width: '25%' }} title="Raw Materials (25%)" />
-                    <div className="bento-segment seg-3" style={{ width: '18%' }} title="Capital Goods (18%)" />
-                    <div className="bento-segment seg-4" style={{ width: '12%' }} title="Logistics (12%)" />
-                  </div>
-
-                  <div className="bento-cost-legend">
-                    <div className="bento-legend-row"><span className="legend-dot seg-1-dot" /><span>Inventory (45%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.45)}</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-2-dot" /><span>Raw Materials (25%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.25)}</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-3-dot" /><span>Capital Goods (18%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.18)}</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-4-dot" /><span>Logistics (12%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.12)}</span></div>
-                  </div>
-                </div>
-
-                {/* Card 2: Financial Health Donut / Semi-Circle Gauge */}
-                <div className="dash-card bento-gauge-card">
-                  <div className="bento-card-header">
-                    <div>
-                      <div className="bento-card-title">Financial Health</div>
-                      <div className="bento-card-sub">Current VAT Compliance Status</div>
-                    </div>
-                    <span className="bento-gauge-badge">30d</span>
-                  </div>
-
-                  <div className="bento-gauge-body">
-                    <svg className="bento-gauge-svg" viewBox="0 0 200 120">
-                      <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--dash-border)" strokeWidth="16" strokeLinecap="round" />
-                      <path d="M 20 100 A 80 80 0 0 1 150 40" fill="none" stroke="#E04F16" strokeWidth="16" strokeLinecap="round" />
-                      <text x="100" y="85" textAnchor="middle" fill="var(--df)" fontSize="28" fontWeight="bold">75%</text>
-                      <text x="100" y="105" textAnchor="middle" fill="var(--dm)" fontSize="10">VAT Compliance Score</text>
-                    </svg>
-                  </div>
-                  <p className="bento-gauge-note">Based on aggregated transaction metrics over the past 30 days.</p>
-                </div>
-
-                {/* Card 3: Goal Trackers */}
-                <div className="dash-card bento-goal-card">
-                  <div className="bento-card-header">
-                    <div className="bento-card-title">Goal Tracker</div>
-                    <button className="bento-add-goal-btn">+ Add goals</button>
-                  </div>
-
-                  <div className="bento-goal-list">
-                    <div className="bento-goal-item">
-                      <div className="bento-goal-row">
-                        <span className="bento-goal-name">Tax Credit Target</span>
-                        <span className="bento-goal-val">Rs. 7,000 / Rs. 10,000</span>
-                      </div>
-                      <div className="bento-goal-track"><div className="bento-goal-fill" style={{ width: '70%' }} /></div>
-                      <span className="bento-goal-sub">Left to save: 4 months</span>
-                    </div>
-
-                    <div className="bento-goal-item">
-                      <div className="bento-goal-row">
-                        <span className="bento-goal-name">Cashflow Reserve</span>
-                        <span className="bento-goal-val">Rs. 25,000 / Rs. 40,000</span>
-                      </div>
-                      <div className="bento-goal-track"><div className="bento-goal-fill" style={{ width: '62.5%' }} /></div>
-                      <span className="bento-goal-sub">Left to save: 3 months</span>
-                    </div>
-
-                    <div className="bento-goal-item">
-                      <div className="bento-goal-row">
-                        <span className="bento-goal-name">Inventory Buffer</span>
-                        <span className="bento-goal-val">Rs. 16,000 / Rs. 20,000</span>
-                      </div>
-                      <div className="bento-goal-track"><div className="bento-goal-fill" style={{ width: '80%' }} /></div>
-                      <span className="bento-goal-sub">Left to save: 2 months</span>
-                    </div>
-                  </div>
-                </div>
+                <TopSuppliersChart  data={chartsData?.topSuppliers ?? []} onNav={() => handleNavClick('suppliers')} />
+                <EntryStatusDonut   data={chartsData?.paidStatus   ?? []} onNav={() => handleNavClick('register')} />
+                <TaxVsPurchases     data={chartsData?.monthly      ?? []} />
               </div>
             </div>)}
           </main>
@@ -634,7 +757,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
       </div>
 
-      {/* ── Mobile bottom tab bar with elevated center ＋ button ── */}
+      {/* ── Mobile bottom tab bar ── */}
       <nav className="dash-mobile-nav" aria-label="Main navigation">
         <button
           className={`dash-mobile-nav-btn${activeNav === 'overview' ? ' active' : ''}`}
@@ -653,14 +776,14 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
           <span className="dash-mobile-nav-label">Register</span>
         </button>
 
-        {/* Elevated Center Add Button */}
+        {/* Centre FAB — always opens action sheet */}
         <button
           className="dash-mobile-fab"
-          onClick={() => setShowEntryForm(true)}
-          aria-label="Add Purchase Entry"
-          title="Add Purchase Entry"
+          onClick={() => setShowFabMenu(v => !v)}
+          aria-label="Quick actions"
+          aria-expanded={showFabMenu}
         >
-          <span>＋</span>
+          <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: showFabMenu ? 'rotate(45deg)' : 'none', fontSize: 22, fontWeight: 700, lineHeight: 1 }}>＋</span>
         </button>
 
         <button
@@ -680,6 +803,56 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
           <span className="dash-mobile-nav-label">Payments</span>
         </button>
       </nav>
+
+      {/* ── FAB Action Sheet — slides up above the nav bar ── */}
+      {showFabMenu && (
+        <div
+          className="fab-backdrop"
+          onClick={() => setShowFabMenu(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div className={`fab-action-sheet${showFabMenu ? ' fab-action-sheet--open' : ''}`} role="menu">
+        <button
+          className="fab-action-item"
+          onClick={() => { setShowFabMenu(false); setShowEntryForm(true) }}
+          role="menuitem"
+        >
+          <span className="fab-action-icon fab-action-icon--purchase">
+            <RegisterIcon />
+          </span>
+          <div className="fab-action-text">
+            <span className="fab-action-label">Add Purchase</span>
+            <span className="fab-action-sub">Log a new invoice entry</span>
+          </div>
+        </button>
+        <button
+          className="fab-action-item"
+          onClick={() => { setShowFabMenu(false); setPayFormCount(c => c + 1); handleNavClick('payments') }}
+          role="menuitem"
+        >
+          <span className="fab-action-icon fab-action-icon--payment">
+            <PaymentsNavIcon />
+          </span>
+          <div className="fab-action-text">
+            <span className="fab-action-label">Record Payment</span>
+            <span className="fab-action-sub">Mark a supplier payment</span>
+          </div>
+        </button>
+        <button
+          className="fab-action-item"
+          onClick={() => { setShowFabMenu(false); setSupFormCount(c => c + 1); handleNavClick('suppliers') }}
+          role="menuitem"
+        >
+          <span className="fab-action-icon fab-action-icon--supplier">
+            <SuppliersNavIcon />
+          </span>
+          <div className="fab-action-text">
+            <span className="fab-action-label">Add Supplier</span>
+            <span className="fab-action-sub">Register a new party</span>
+          </div>
+        </button>
+      </div>
 
       {/* ── Purchase Entry Form modal ── */}
       {showEntryForm && (

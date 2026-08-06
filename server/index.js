@@ -18,6 +18,7 @@ import suppliersRouter from './routes/suppliers.js'
 import purchaseEntriesRouter from './routes/purchase-entries.js'
 import paymentsRouter from './routes/payments.js'
 import settingsRouter from './routes/settings.js'
+import dashboardRouter from './routes/dashboard.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -82,6 +83,7 @@ app.use('/api', suppliersRouter)
 app.use('/api', purchaseEntriesRouter)
 app.use('/api', paymentsRouter)
 app.use('/api', settingsRouter)
+app.use('/api', dashboardRouter)
 
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

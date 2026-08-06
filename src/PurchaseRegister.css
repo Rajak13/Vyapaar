@@ -350,9 +350,27 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .pr-page { padding: 20px 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
-  .pr-header { flex-direction: column; gap: 12px; }
-  .pr-header-actions { width: 100%; justify-content: flex-end; }
-  .pr-header-actions .pr-btn-primary { display: none; }
+  .pr-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .pr-header-actions { width: auto; justify-content: flex-end; }
+  .pr-header-actions .pr-btn-primary { display: inline-flex; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+  .pr-header-actions .pr-btn-ghost { display: none; }
+
+  .pr-page.is-refreshing .pr-table-wrap,
+  .pr-page.is-refreshing .pr-mobile-cards {
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+  }
+
+  /* 44px minimum tap targets */
+  .pr-btn-ghost, .pr-btn-primary { min-height: 44px; }
+  .pr-page-btn { min-height: 44px; min-width: 44px; }
+  .pr-action-btn { width: 36px; height: 36px; }
+
+  /* Filters wrap cleanly */
+  .pr-filters { flex-direction: column; gap: 10px; padding: 14px 16px; }
+  .pr-filter-group { width: 100%; }
+  .pr-filter-select, .pr-filter-input { width: 100%; min-width: unset; box-sizing: border-box; }
+  .pr-filter-clear { align-self: flex-start; }
 
   .pr-table-wrap { display: none; }
   .pr-mobile-cards {

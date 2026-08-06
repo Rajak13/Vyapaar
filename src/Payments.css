@@ -486,9 +486,40 @@
 /* ── Mobile responsive bottom sheet & cards ── */
 @media (max-width: 768px) {
   .pay-page { padding: 20px 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
-  .pay-stats-row { grid-template-columns: 1fr 1fr; }
-  .pay-stat-accent { grid-column: span 2; }
-  .pay-header .pay-btn-primary { display: none; }
+
+  /* Compact stat strip — single horizontal scrolling row of chips */
+  .pay-stats-row {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+  .pay-stats-row::-webkit-scrollbar { display: none; }
+  .pay-stat-card {
+    flex-shrink: 0;
+    min-width: 130px;
+    padding: 10px 14px;
+    gap: 4px;
+    border-radius: 12px;
+  }
+  .pay-stat-value { font-size: 16px; }
+  .pay-stat-label { font-size: 9px; }
+  .pay-stat-accent { min-width: 150px; }
+
+  /* keep header button visible */
+  .pay-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .pay-btn-primary { display: inline-flex; min-height: 40px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+  /* 44px tap targets */
+  .pay-action-btn { width: 36px; height: 36px; }
+
+  .pay-page.is-refreshing .pay-table-wrap,
+  .pay-page.is-refreshing .pay-mobile-cards {
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+  }
 
   .pay-table-wrap { display: none; }
   .pay-mobile-cards {

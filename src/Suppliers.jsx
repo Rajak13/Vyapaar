@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Q, fetchSupplierBals, apiFetch, getAuthHeaders } from './api'
 import './Suppliers.css'
+import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -199,10 +200,23 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
 }
 
 // ── Main Suppliers page ───────────────────────────────────────────────────────
-export default function Suppliers({ onToast }) {
+export default function Suppliers({ onToast, openForm: openFormProp }) {
   const [search,      setSearch]      = useState('')
   const [showForm,    setShowForm]    = useState(false)
   const [editTarget,  setEditTarget]  = useState(null)
+
+  // Allow Dashboard's mobile FAB action sheet to open the Add Supplier form externally.
+  // Track last-seen value so re-mounting with the same counter doesn't re-open the form.
+  const prevOpenFormRef = useRef(openFormProp ?? 0)
+  useEffect(() => {
+    if ((openFormProp ?? 0) > prevOpenFormRef.current) {
+      prevOpenFormRef.current = openFormProp
+      setEditTarget(null)
+      setShowForm(true)
+    } else {
+      prevOpenFormRef.current = openFormProp ?? 0
+    }
+  }, [openFormProp])
 
   const qc = useQueryClient()
   const refresh = useCallback(() => {
@@ -211,13 +225,15 @@ export default function Suppliers({ onToast }) {
     qc.invalidateQueries({ queryKey: Q.stats() })
   }, [qc])
 
-  const { data, isLoading: loading, error: queryError } = useQuery({
-    queryKey: Q.supplierBals(),
-    queryFn:  fetchSupplierBals,
+  const { data, isLoading: loading, isFetching, error: queryError } = useQuery({
+    queryKey:        Q.supplierBals(),
+    queryFn:         fetchSupplierBals,
+    placeholderData: keepPreviousData,
   })
 
-  const suppliers = data?.suppliers ?? []
-  const error     = queryError?.message ?? ''
+  const suppliers    = data?.suppliers ?? []
+  const error        = queryError?.message ?? ''
+  const isRefreshing = isFetching && !loading
 
   const filtered = suppliers.filter(s =>
     !search.trim() ||
@@ -260,7 +276,8 @@ export default function Suppliers({ onToast }) {
   }
 
   return (
-    <div className="sup-page">
+    <div className={`sup-page${isRefreshing ? ' is-refreshing' : ''}`}>
+      <FetchBar active={isRefreshing} />
 
       {/* Header */}
       <div className="sup-header">

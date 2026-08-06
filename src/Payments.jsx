@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Q, fetchSupplierList, fetchPayments, fetchPaymentStats, getAuthHeaders } from './api'
 import './Payments.css'
 import { adToBs } from './adToBs.js'
 import InvoiceOverlay from './InvoiceOverlay'
+import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -286,10 +287,23 @@ function PaymentForm({ suppliers, onClose, onSuccess }) {
 }
 
 // ── Main Payments page ────────────────────────────────────────────────────────
-export default function Payments({ onToast }) {
+export default function Payments({ onToast, openForm: openFormProp }) {
   const [search,      setSearch]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
   const [showForm,    setShowForm]    = useState(false)
+
+  // Allow Dashboard's mobile FAB action sheet to open the form externally.
+  // We track the last value we acted on so re-mounting with the same counter
+  // value (navigating to Payments after a previous sheet tap) doesn't re-open the form.
+  const prevOpenFormRef = useRef(openFormProp ?? 0)
+  useEffect(() => {
+    if ((openFormProp ?? 0) > prevOpenFormRef.current) {
+      prevOpenFormRef.current = openFormProp
+      setShowForm(true)
+    } else {
+      prevOpenFormRef.current = openFormProp ?? 0
+    }
+  }, [openFormProp])
   const [selectedPayment, setSelectedPayment] = useState(null)
   const qc = useQueryClient()
   const refresh = useCallback(() => {
@@ -307,12 +321,14 @@ export default function Payments({ onToast }) {
   const suppliers = suppData?.suppliers ?? []
 
   // Payments list
-  const { data: payData, isLoading: loading } = useQuery({
-    queryKey: Q.payments(payParamsStr),
-    queryFn:  () => fetchPayments(payParamsStr),
+  const { data: payData, isLoading: loading, isFetching } = useQuery({
+    queryKey:        Q.payments(payParamsStr),
+    queryFn:         () => fetchPayments(payParamsStr),
+    placeholderData: keepPreviousData,
   })
-  const payments = payData?.payments ?? []
-  const total    = payData?.total    ?? 0
+  const payments     = payData?.payments ?? []
+  const total        = payData?.total    ?? 0
+  const isRefreshing = isFetching && !loading
 
   // Payment stats
   const { data: stats } = useQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
@@ -356,7 +372,8 @@ export default function Payments({ onToast }) {
   }
 
   return (
-    <div className="pay-page">
+    <div className={`pay-page${isRefreshing ? ' is-refreshing' : ''}`}>
+      <FetchBar active={isRefreshing} />
 
       {/* Header */}
       <div className="pay-header">
@@ -368,7 +385,6 @@ export default function Payments({ onToast }) {
           <PlusIcon /><span>Record Payment</span>
         </button>
       </div>
-
       {/* Stats row */}
       {stats && (
         <div className="pay-stats-row">

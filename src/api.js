@@ -56,6 +56,7 @@ export const Q = {
   paymentStats:    () => ['payments', 'stats'],
   fiscalPeriods:   () => ['fiscal-periods'],
   businessProfile: () => ['business-profile'],
+  charts:          () => ['dashboard', 'charts'],
 }
 
 // ─── Fetchers ──────────────────────────────────────────────────────────────────
@@ -69,3 +70,4 @@ export const fetchPayments        = (params) => apiFetch(`/api/supplier-payments
 export const fetchPaymentStats    = () => apiFetch('/api/supplier-payments/stats')
 export const fetchFiscalPeriods   = () => apiFetch('/api/fiscal-periods')
 export const fetchBusinessProfile = () => apiFetch('/api/settings/business-profile')
+export const fetchCharts          = () => apiFetch('/api/dashboard/charts')

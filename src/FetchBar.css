@@ -1,0 +1,76 @@
+/* ── FetchBar — branded top progress indicator ──────────────────────────────
+   Sits flush at the top of its parent (position: absolute, top: 0).
+   The parent must have position: relative (all page wrappers already do).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.fetch-bar-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+
+  /* Hidden by default — slides in from opacity + scaleY */
+  opacity: 0;
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.fetch-bar-track--visible {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* The actual moving bar */
+.fetch-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 45%;
+  border-radius: 0 2px 2px 0;
+
+  /* Brand orange with a warm glow */
+  background: linear-gradient(90deg, #ab2f00 0%, #eb5e28 60%, #f97316 100%);
+  box-shadow: 0 0 8px 1px rgba(235, 94, 40, 0.55);
+
+  /* Indeterminate travel: fills to ~70%, snaps back, repeats */
+  animation: fetch-bar-travel 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* A second highlight overlay that moves faster — creates depth */
+.fetch-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 40%,
+    transparent 80%
+  );
+  animation: fetch-bar-shimmer 1.4s ease infinite;
+}
+
+@keyframes fetch-bar-travel {
+  0%   { left: -50%; width: 45%; }
+  60%  { left: 80%;  width: 45%; }
+  100% { left: 110%; width: 45%; }
+}
+
+@keyframes fetch-bar-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Dark mode — slightly brighter glow */
+.app-dark .fetch-bar-fill {
+  box-shadow: 0 0 10px 2px rgba(235, 94, 40, 0.7);
+}

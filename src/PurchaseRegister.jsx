@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Q, fetchSupplierList, fetchEntries, getAuthHeaders } from './api'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
+import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -132,14 +133,16 @@ export default function PurchaseRegister({ theme, onToast }) {
   const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
   const suppliers = suppData?.suppliers ?? []
 
-  // Entries list
-  const { data: entriesData, isLoading: loading, error: queryError } = useQuery({
-    queryKey: Q.entries(paramsStr),
-    queryFn:  () => fetchEntries(paramsStr),
+  // Entries list — keepPreviousData keeps page N visible while page N+1 loads
+  const { data: entriesData, isLoading: loading, isFetching, error: queryError } = useQuery({
+    queryKey:        Q.entries(paramsStr),
+    queryFn:         () => fetchEntries(paramsStr),
+    placeholderData: keepPreviousData,
   })
-  const entries = entriesData?.entries ?? []
-  const total   = entriesData?.total   ?? 0
-  const error   = queryError?.message  ?? ''
+  const entries    = entriesData?.entries ?? []
+  const total      = entriesData?.total   ?? 0
+  const error      = queryError?.message  ?? ''
+  const isRefreshing = isFetching && !loading   // background refresh, data already present
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const hasFilters = Boolean(search || suppFilter || dateFrom || dateTo)
@@ -199,6 +202,7 @@ export default function PurchaseRegister({ theme, onToast }) {
 
   return (
     <div className="pr-page">
+      <FetchBar active={isRefreshing} />
 
       {/* ── Page header ── */}
       <div className="pr-header">
@@ -267,7 +271,7 @@ export default function PurchaseRegister({ theme, onToast }) {
       {error && <div className="pr-error-banner">{error}</div>}
 
       {/* ── Table ── */}
-      <div className="pr-table-wrap">
+      <div className={`pr-table-wrap${isRefreshing ? ' pr-table-wrap--refreshing' : ''}`}>
         <table className="pr-table">
           <thead>
             <tr>
@@ -317,7 +321,15 @@ export default function PurchaseRegister({ theme, onToast }) {
       </div>
 
       {/* ── Mobile card list (visible on <768px via CSS) ── */}
-      <div className="pr-mobile-cards">
+      <div className={`pr-mobile-cards${isRefreshing ? ' pr-mobile-cards--refreshing' : ''}`}>
+        {loading && [...Array(4)].map((_, i) => (
+          <div key={i} className="pr-mobile-card pr-mobile-card--skeleton">
+            <div className="pr-skeleton" style={{ width: '60%', height: 14, marginBottom: 8 }} />
+            <div className="pr-skeleton" style={{ width: '40%', height: 11 }} />
+            <div className="pr-skeleton" style={{ width: '80%', height: 13, marginTop: 12 }} />
+            <div className="pr-skeleton" style={{ width: '35%', height: 18, marginTop: 8 }} />
+          </div>
+        ))}
         {!loading && entries.map(entry => (
           <div key={entry.id} className="pr-mobile-card" onClick={() => setSelectedEntry(entry)}>
             <div className="pr-mobile-card-header">
