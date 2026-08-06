@@ -167,11 +167,11 @@
 /* ═══ Body grid ═══ */
 .dash-body {
   display: grid;
-  grid-template-columns: 64px 1fr 272px;
+  grid-template-columns: 64px 1fr 340px;
   gap: 0;
   flex: 1;
   padding: 0 24px 20px;
-  column-gap: 16px;
+  column-gap: 20px;
 }
 
 /* ═══ Left icon sidebar ═══ */
@@ -959,10 +959,10 @@
   gap: 20px;
 }
 
-/* Row 1: 12-Column Hero Analytics & Quick Actions Grid */
+/* Row 1: 12-Column Hero Analytics & Metric Stack Grid (8:4 Ratio) */
 .bento-grid-row-1 {
   display: grid;
-  grid-template-columns: 7fr 2.5fr 2.5fr;
+  grid-template-columns: 8fr 4fr;
   gap: 16px;
 }
 
@@ -1303,7 +1303,9 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 14px;
+  height: 100%;
 }
 
 .bento-card-header {

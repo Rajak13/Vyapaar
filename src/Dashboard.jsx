@@ -321,15 +321,15 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 </button>
               </div>
 
-              {/* ── ROW 1: HERO ANALYTICS (12-Col Asymmetric Bento) ── */}
+              {/* ── ROW 1: HERO ANALYTICS (8:4 Canvas Ratio) ── */}
               <div className="bento-grid-row-1">
-                {/* Main Interactive Purchases Hero Chart (col-span-7 / col-span-8) */}
+                {/* Main Interactive Purchases Hero Chart (8 columns) */}
                 <div className="dash-card bento-hero-chart">
                   <div className="bento-chart-header">
                     <div>
                       <div className="bento-chart-eyebrow">Purchases Overview</div>
                       <div className="bento-chart-amount">{fmtRs(stats.totalPurchasesFY)}</div>
-                      <div className="bento-chart-sub">Current fiscal year breakdown</div>
+                      <div className="bento-chart-sub">Current fiscal year expenditure trend</div>
                     </div>
                     <div className="bento-chart-controls">
                       <div className="bento-period-pills">
@@ -340,7 +340,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                     </div>
                   </div>
 
-                  {/* SVG Stacked Bar Chart */}
+                  {/* SVG Stacked Bar Chart with Slim 24px Bars & Ample Breathing Room */}
                   <div className="bento-chart-body">
                     <svg className="bento-svg-chart" viewBox="0 0 500 160" preserveAspectRatio="none">
                       <line x1="0" y1="30" x2="500" y2="30" stroke="var(--dash-border)" strokeDasharray="3 3"/>
@@ -348,54 +348,54 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                       <line x1="0" y1="110" x2="500" y2="110" stroke="var(--dash-border)" strokeDasharray="3 3"/>
                       <line x1="0" y1="140" x2="500" y2="140" stroke="var(--dash-border)"/>
 
-                      <rect x="30" y="60" width="36" height="80" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="30" y="40" width="36" height="18" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="48" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sun</text>
+                      <rect x="40" y="60" width="24" height="80" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="40" y="42" width="24" height="18" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="52" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sun</text>
 
-                      <rect x="95" y="80" width="36" height="60" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="95" y="65" width="36" height="13" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="113" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Mon</text>
+                      <rect x="105" y="80" width="24" height="60" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="105" y="67" width="24" height="13" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="117" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Mon</text>
 
-                      <rect x="160" y="50" width="36" height="90" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="160" y="30" width="36" height="18" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="178" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Tue</text>
+                      <rect x="170" y="50" width="24" height="90" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="170" y="32" width="24" height="18" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="182" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Tue</text>
 
-                      <rect x="225" y="30" width="36" height="110" rx="6" fill="#E04F16"/>
-                      <rect x="225" y="12" width="36" height="16" rx="4" fill="#34d399"/>
-                      <text x="243" y="155" textAnchor="middle" fill="var(--df)" fontWeight="bold" fontSize="10">Wed</text>
+                      <rect x="235" y="30" width="24" height="110" rx="4" fill="#E04F16"/>
+                      <rect x="235" y="14" width="24" height="16" rx="3" fill="#34d399"/>
+                      <text x="247" y="155" textAnchor="middle" fill="var(--df)" fontWeight="bold" fontSize="10">Wed</text>
 
-                      <rect x="290" y="70" width="36" height="70" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="290" y="55" width="36" height="13" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="308" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Thu</text>
+                      <rect x="300" y="70" width="24" height="70" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="300" y="57" width="24" height="13" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="312" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Thu</text>
 
-                      <rect x="355" y="90" width="36" height="50" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="355" y="78" width="36" height="10" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="373" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Fri</text>
+                      <rect x="365" y="90" width="24" height="50" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="365" y="80" width="24" height="10" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="377" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Fri</text>
 
-                      <rect x="420" y="45" width="36" height="95" rx="6" fill="#E04F16" opacity="0.85"/>
-                      <rect x="420" y="28" width="36" height="15" rx="4" fill="#34d399" opacity="0.9"/>
-                      <text x="438" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sat</text>
+                      <rect x="430" y="45" width="24" height="95" rx="4" fill="#E04F16" opacity="0.85"/>
+                      <rect x="430" y="30" width="24" height="15" rx="3" fill="#34d399" opacity="0.9"/>
+                      <text x="442" y="155" textAnchor="middle" fill="var(--dm)" fontSize="10">Sat</text>
                     </svg>
                   </div>
 
                   <div className="bento-chart-legend">
-                    <span className="legend-item"><span className="legend-dot dot-orange" />Purchases</span>
+                    <span className="legend-item"><span className="legend-dot dot-orange" />Purchases Amount</span>
                     <span className="legend-item"><span className="legend-dot dot-green" />VAT Credit (13%)</span>
                   </div>
                 </div>
 
-                {/* Secondary Vertical Metric Stack (col-span-2) */}
+                {/* Secondary Vertical Metric Stack (4 columns) */}
                 <div className="bento-metric-stack">
                   <div className="dash-card bento-mini-card" onClick={() => handleNavClick('register')}>
-                    <span className="bento-mini-label">Total Purchases</span>
+                    <span className="bento-mini-label">Total Purchases (FY)</span>
                     <span className="bento-mini-val">{fmtRs(stats.totalPurchasesFY)}</span>
                     <span className="bento-trend-badge trend-up">↑ 5.1% vs last month</span>
                   </div>
 
                   <div className="dash-card bento-mini-card">
-                    <span className="bento-mini-label">Tax Liability</span>
+                    <span className="bento-mini-label">Tax Liability (13% VAT)</span>
                     <span className="bento-mini-val">{fmtRs(stats.taxTotal)}</span>
-                    <span className="bento-trend-badge trend-neutral">13% VAT rate</span>
+                    <span className="bento-trend-badge trend-neutral">Accumulated VAT credit</span>
                   </div>
 
                   <div className="dash-card bento-mini-card" onClick={() => handleNavClick('suppliers')}>
@@ -404,56 +404,27 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                     <span className="bento-trend-badge trend-warn">Payable to {stats.activeSuppliers} parties</span>
                   </div>
                 </div>
-
-                {/* Quick Action & Bahi-Khata Card (col-span-3) */}
-                <div className="dash-card bento-quick-action">
-                  <div className="bento-card-title">Quick Actions</div>
-                  <div className="bento-action-buttons">
-                    <button className="bento-action-btn" onClick={() => setShowEntryForm(true)}>
-                      <div className="bento-action-icon"><PlusIcon /></div>
-                      <span>+ Entry</span>
-                    </button>
-                    <button className="bento-action-btn" onClick={() => handleNavClick('payments')}>
-                      <div className="bento-action-icon"><CashIcon /></div>
-                      <span>Payment</span>
-                    </button>
-                    <button className="bento-action-btn" onClick={() => handleNavClick('suppliers')}>
-                      <div className="bento-action-icon"><UsersIcon /></div>
-                      <span>Supplier</span>
-                    </button>
-                  </div>
-
-                  <div className="bento-divider" />
-
-                  <div className="bento-card-title">Top Active Suppliers</div>
-                  <div className="bento-supplier-avatars">
-                    {supplierBalances.slice(0, 4).map((s, i) => (
-                      <div key={i} className="bento-supplier-chip" title={`${s.name}: ${s.amount}`}>
-                        <div className="bento-avatar">{s.initial}</div>
-                        <span className="bento-chip-name">{s.name.split(' ')[0]}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              {/* ── ROW 2: SPEND LIMIT & TAX OPTIMIZATION BANNERS (12-Col) ── */}
+              {/* ── ROW 2: SPEND LIMIT & TAX OPTIMIZATION BANNERS ── */}
               <div className="bento-grid-row-2">
                 {/* Spending Limit / Budget Tracker */}
                 <div className="dash-card bento-limit-card">
                   <div className="bento-limit-header">
                     <div>
                       <div className="bento-card-title">Monthly Spending Limit</div>
-                      <div className="bento-limit-sub">Recipient & Supplier Accounts</div>
+                      <div className="bento-limit-sub">Current month spend vs threshold</div>
                     </div>
                     <span className="bento-edit-icon">✎</span>
                   </div>
                   <div className="bento-limit-bar-wrap">
-                    <div className="bento-limit-bar-fill" style={{ width: '74%' }} />
+                    <div className="bento-limit-bar-fill" style={{
+                      width: `${Math.min(100, Math.round((parseFloat(stats.totalPurchasesFY) / 500000) * 100))}%`
+                    }} />
                   </div>
                   <div className="bento-limit-labels">
                     <span className="bento-limit-curr">{fmtRs(stats.totalPurchasesFY)}</span>
-                    <span className="bento-limit-target">Rs. 2,00,000</span>
+                    <span className="bento-limit-target">Rs. 5,00,000 Budget</span>
                   </div>
                 </div>
 
@@ -471,30 +442,30 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 </div>
               </div>
 
-              {/* ── ROW 3: ADVANCED DATA VISUALIZATIONS (3 Bento Cards) ── */}
+              {/* ── ROW 3: ADVANCED DATA VISUALIZATIONS (3 Equal Height Cards) ── */}
               <div className="bento-grid-row-3">
                 {/* Card 1: Cost Analysis / Category Breakdown */}
                 <div className="dash-card bento-cost-card">
                   <div className="bento-card-header">
                     <div>
                       <div className="bento-card-title">Cost Analysis</div>
-                      <div className="bento-card-sub">Spending Overview</div>
+                      <div className="bento-card-sub">Expenditure Category Breakdown</div>
                     </div>
                     <span className="bento-cost-val">{fmtRs(stats.totalPurchasesFY)}</span>
                   </div>
 
                   <div className="bento-segmented-bar">
                     <div className="bento-segment seg-1" style={{ width: '45%' }} title="Inventory (45%)" />
-                    <div className="bento-segment seg-2" style={{ width: '22%' }} title="Raw Materials (22%)" />
+                    <div className="bento-segment seg-2" style={{ width: '25%' }} title="Raw Materials (25%)" />
                     <div className="bento-segment seg-3" style={{ width: '18%' }} title="Capital Goods (18%)" />
-                    <div className="bento-segment seg-4" style={{ width: '15%' }} title="Logistics (15%)" />
+                    <div className="bento-segment seg-4" style={{ width: '12%' }} title="Logistics (12%)" />
                   </div>
 
                   <div className="bento-cost-legend">
-                    <div className="bento-legend-row"><span className="legend-dot seg-1-dot" /><span>Inventory</span><span className="pct">45%</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-2-dot" /><span>Raw Materials</span><span className="pct">22%</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-3-dot" /><span>Capital Goods</span><span className="pct">18%</span></div>
-                    <div className="bento-legend-row"><span className="legend-dot seg-4-dot" /><span>Logistics</span><span className="pct">15%</span></div>
+                    <div className="bento-legend-row"><span className="legend-dot seg-1-dot" /><span>Inventory (45%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.45)}</span></div>
+                    <div className="bento-legend-row"><span className="legend-dot seg-2-dot" /><span>Raw Materials (25%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.25)}</span></div>
+                    <div className="bento-legend-row"><span className="legend-dot seg-3-dot" /><span>Capital Goods (18%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.18)}</span></div>
+                    <div className="bento-legend-row"><span className="legend-dot seg-4-dot" /><span>Logistics (12%)</span><span className="pct">{fmtRs(parseFloat(stats.totalPurchasesFY) * 0.12)}</span></div>
                   </div>
                 </div>
 
@@ -503,7 +474,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="bento-card-header">
                     <div>
                       <div className="bento-card-title">Financial Health</div>
-                      <div className="bento-card-sub">Current VAT Status</div>
+                      <div className="bento-card-sub">Current VAT Compliance Status</div>
                     </div>
                     <span className="bento-gauge-badge">30d</span>
                   </div>
@@ -665,10 +636,10 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             </div>)}
           </main>
 
-          {/* Right sidebar */}
+          {/* Right sidebar — Re-organized Vertically (Rule 4) */}
           <aside className="dash-right-sidebar">
 
-            {/* Fiscal Period card — real data from stats endpoint */}
+            {/* 1. Fiscal Period card — real data from stats endpoint */}
             <div className="dash-card">
               <div className="dash-fiscal-header">
                 <span className="dash-fiscal-eyebrow">Fiscal Period</span>
@@ -687,7 +658,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               </div>
             </div>
 
-            {/* Spend by Supplier — real data from supplier_balances */}
+            {/* 2. Spend by Supplier — real data from supplier_balances */}
             <div className="dash-card">
               <div className="dash-section-label">Spend by Supplier</div>
               <div className="dash-supplier-list">
@@ -712,6 +683,25 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               <button className="dash-manage-suppliers-btn" onClick={() => handleNavClick('suppliers')}>
                 Manage All Suppliers
               </button>
+            </div>
+
+            {/* 3. Quick Actions Card */}
+            <div className="dash-card bento-quick-action">
+              <div className="bento-card-title">Quick Actions</div>
+              <div className="bento-action-buttons">
+                <button className="bento-action-btn" onClick={() => setShowEntryForm(true)}>
+                  <div className="bento-action-icon"><PlusIcon /></div>
+                  <span>+ Entry</span>
+                </button>
+                <button className="bento-action-btn" onClick={() => handleNavClick('payments')}>
+                  <div className="bento-action-icon"><CashIcon /></div>
+                  <span>Payment</span>
+                </button>
+                <button className="bento-action-btn" onClick={() => handleNavClick('suppliers')}>
+                  <div className="bento-action-icon"><UsersIcon /></div>
+                  <span>Supplier</span>
+                </button>
+              </div>
             </div>
 
           </aside>
