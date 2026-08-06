@@ -99,20 +99,51 @@ export default function App() {
   // On page load, check if a valid session cookie or token exists in the background.
   useEffect(() => {
     const localToken = localStorage.getItem('vyapaaar_token')
+
+    // Helper: parse user from JWT payload without verifying signature (client-side only)
+    function parseJwtUser(token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (!payload?.sub) return null
+        // Check expiry
+        if (payload.exp && payload.exp * 1000 < Date.now()) return null
+        return { id: payload.sub, email: payload.email, full_name: payload.full_name }
+      } catch { return null }
+    }
+
+    // If we have a local token that hasn't expired yet, optimistically restore user
+    // immediately so dashboard loads without waiting for the network.
+    if (localToken) {
+      const optimisticUser = parseJwtUser(localToken)
+      if (optimisticUser) {
+        setUser(optimisticUser)
+        setSessionChecked(true)
+      }
+    }
+
     const headers = localToken ? { Authorization: `Bearer ${localToken}` } : {}
     fetch(`${API_URL}/auth/me`, { credentials: 'include', headers })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (r.status === 401 || r.status === 403) {
+          // Genuine auth rejection — clear stored session
+          localStorage.removeItem('vyapaar_has_session')
+          localStorage.removeItem('vyapaaar_token')
+          setUser(null)
+          return null
+        }
+        return r.ok ? r.json() : null
+      })
       .then(data => {
         if (data?.user) {
           localStorage.setItem('vyapaar_has_session', 'true')
           if (data.token) localStorage.setItem('vyapaaar_token', data.token)
           setUser(data.user)
-        } else {
-          localStorage.removeItem('vyapaar_has_session')
-          localStorage.removeItem('vyapaaar_token')
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Network error (e.g. Render cold-starting) — keep optimistic user if we set one.
+        // Don't clear the session — the token may still be valid once server wakes up.
+      })
       .finally(() => setSessionChecked(true))
   }, [])
 

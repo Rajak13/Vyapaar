@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Q, fetchSupplierList, fetchPayments, fetchPaymentStats } from './api'
+import { Q, fetchSupplierList, fetchPayments, fetchPaymentStats, getAuthHeaders } from './api'
 import './Payments.css'
 import { adToBs } from './adToBs.js'
 import InvoiceOverlay from './InvoiceOverlay'
@@ -71,12 +71,12 @@ function PaymentForm({ suppliers, onClose, onSuccess }) {
   // Load open invoices when supplier changes
   useEffect(() => {
     if (!supplierId) { setInvoices([]); setInvoiceId(''); setSupplierBalance(null); return }
-    fetch(`${API_URL}/api/purchase-entries?supplier_id=${supplierId}&limit=50`, { credentials: 'include' })
+    fetch(`${API_URL}/api/purchase-entries?supplier_id=${supplierId}&limit=50`, { credentials: 'include', headers: getAuthHeaders() })
       .then(r => r.ok ? r.json() : { entries: [] })
       .then(j => setInvoices(j.entries ?? []))
       .catch(() => setInvoices([]))
     // Fetch balance for overpayment guard
-    fetch(`${API_URL}/api/suppliers/${supplierId}/balance`, { credentials: 'include' })
+    fetch(`${API_URL}/api/suppliers/${supplierId}/balance`, { credentials: 'include', headers: getAuthHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(j => setSupplierBalance(j))
       .catch(() => setSupplierBalance(null))
@@ -127,7 +127,7 @@ function PaymentForm({ suppliers, onClose, onSuccess }) {
     try {
       const res  = await fetch(`${API_URL}/api/supplier-payments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify(body),
       })
@@ -338,6 +338,7 @@ export default function Payments({ onToast }) {
     fetch(`${API_URL}/api/supplier-payments/${id}`, {
       method: 'DELETE',
       credentials: 'include',
+      headers: getAuthHeaders(),
     })
       .then(async res => {
         if (!res.ok) {

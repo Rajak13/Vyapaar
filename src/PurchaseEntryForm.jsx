@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import './PurchaseEntryForm.css'
 import { adToBs } from './adToBs.js'
+import { getAuthHeaders } from './api.js'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -89,7 +90,7 @@ function SupplierSearch({ selected, onSelect, error }) {
   const allRef   = useRef([])
 
   useEffect(() => {
-    fetch(`${API_URL}/api/suppliers`, { credentials: 'include' })
+    fetch(`${API_URL}/api/suppliers`, { credentials: 'include', headers: getAuthHeaders() })
       .then(r => r.ok ? r.json() : { suppliers: [] })
       .then(j => { allRef.current = j.suppliers ?? [] })
       .catch(() => {})
@@ -248,7 +249,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     try {
       const res  = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify(body),
       })

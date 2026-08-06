@@ -10,16 +10,27 @@
 
 const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
-export async function apiFetch(path, options = {}) {
+/**
+ * Returns headers with Authorization: Bearer <token> if a token exists in localStorage.
+ * Import and use this in every raw fetch() call so iOS Safari (which blocks cross-origin
+ * cookies via ITP) can still authenticate via the Bearer token fallback.
+ */
+export function getAuthHeaders(extra = {}) {
   const rawToken = localStorage.getItem('vyapaaar_token')
   const token = (rawToken && rawToken !== 'undefined' && rawToken !== 'null') ? rawToken : null
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  }
+}
 
+export async function apiFetch(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...getAuthHeaders(),
       ...options.headers,
     },
   })
