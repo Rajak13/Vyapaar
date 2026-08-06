@@ -217,23 +217,22 @@
 
 .pay-supplier-name { font-weight: 600; font-size: 13px; }
 
-/* Method badges */
+/* Method badges — Physical Bahi-Khata Ink-Stamp Marks */
 .pay-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 3px 10px;
-  border-radius: 99px;
+  border-radius: 999px;
+  font-family: 'Fraunces', 'Georgia', serif;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  border: 1px solid transparent;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-.pay-badge-cash   { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
-.pay-badge-online { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
-.pay-badge-cheque { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
-.dash-page.app-dark .pay-badge-cash   { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
-.dash-page.app-dark .pay-badge-online { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
-.dash-page.app-dark .pay-badge-cheque { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
+.pay-badge-cash   { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
+.pay-badge-online { background: transparent; color: #1C1B19; border: 1.5px solid #1C1B19; }
+.pay-badge-cheque { background: transparent; color: #8A8578; border: 1.5px dashed #8A8578; }
 
 /* Skeleton */
 .pay-skeleton-row td { padding: 14px 18px; border-top: 1px solid var(--dash-border); }

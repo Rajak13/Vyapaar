@@ -257,7 +257,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
         {/* ── Body grid ── */}
         <div className="dash-body">
 
-          {/* Left icon sidebar */}
+          {/* Left icon sidebar with text labels */}
           <aside className="dash-sidebar">
             <div className="dash-sidebar-inner">
               {NAV_ITEMS.map(({ key, Icon, title }) => (
@@ -269,6 +269,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   aria-label={title}
                 >
                   <Icon />
+                  <span className="dash-sidebar-label">{title}</span>
                 </button>
               ))}
               <div className="dash-sidebar-divider" />
@@ -279,6 +280,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 aria-label="Log out"
               >
                 <LogoutIcon />
+                <span className="dash-sidebar-label">Logout</span>
               </button>
             </div>
           </aside>
@@ -315,10 +317,19 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="dash-greeting-line">{greeting},</div>
                   <div className="dash-greeting-name">{fullName}</div>
                 </div>
-                <button className="dash-view-entries-btn" onClick={() => setShowEntryForm(true)}>
-                  <span>+ Add Entry</span>
-                  <ArrowIcon />
-                </button>
+
+                {/* Top Header Quick Action Bar (Visible without scrolling) */}
+                <div className="dash-header-actions">
+                  <button className="dash-action-btn-seal" onClick={() => setShowEntryForm(true)}>
+                    <span>+ Add Entry</span>
+                  </button>
+                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('payments')}>
+                    <span>Record Payment</span>
+                  </button>
+                  <button className="dash-action-btn-outline" onClick={() => handleNavClick('suppliers')}>
+                    <span>Add Supplier</span>
+                  </button>
+                </div>
               </div>
 
               {/* ── ROW 1: HERO ANALYTICS (8:4 Canvas Ratio) ── */}

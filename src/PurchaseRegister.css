@@ -425,17 +425,19 @@
   }
 }
 
-/* ── Paid status badge ── */
+/* Status badges — Physical Bahi-Khata Circular Ink-Stamp Marks */
 .pr-status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  justify-content: center;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-family: 'Fraunces', 'Georgia', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.pr-status-paid    { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-.pr-status-partial { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-.pr-status-pending { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+.pr-status-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
+.pr-status-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
+.pr-status-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }

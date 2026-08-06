@@ -1,20 +1,19 @@
-/* ═══ Dashboard page wrapper ═══ */
 .dash-page {
   min-height: 100vh;
-  background: #E5E5E5;
+  background: #F7F5F0;
   font-family: 'Inter', sans-serif;
   padding: 20px;
   box-sizing: border-box;
 }
 
 .dash-page.app-dark {
-  background: #121212;
+  background: #F7F5F0;
 }
 
 /* ─ Rounded container ─ */
 .dash-container {
-  background: #F3F2F0;
-  border-radius: 48px;
+  background: #F7F5F0;
+  border-radius: 24px;
   min-height: calc(100vh - 40px);
   overflow: hidden;
   display: flex;
@@ -22,20 +21,29 @@
 }
 
 .dash-page.app-dark .dash-container {
-  background: #121212;
+  background: #F7F5F0;
 }
 
-/* ═══ CSS tokens scoped to dark & light — Dynamic Dual-Theme System (WCAG AA Compliant >= 4.5:1) ═══ */
-.dash-page.app-dark  { --dc: #1E1E1E; --db: #121212; --df: #F8FAFC; --dm: #9CA3AF; --dash-border: #2E2E2E; --dbd: rgba(255,255,255,0.08); --orange: #E04F16; }
-.dash-page.app-light { --dc: #FFFFFF; --db: #F8FAFC; --df: #0F172A; --dm: #64748B; --dash-border: #E2E8F0; --dbd: rgba(0,0,0,0.05); --orange: #E04F16; }
+/* ═══ Physical Bahi-Khata Ledger Tokens — Strict 5-Token Palette ═══ */
+.dash-page {
+  --dc: #FFFFFF;
+  --db: #F7F5F0;
+  --df: #1C1B19;
+  --dm: #8A8578;
+  --dash-border: rgba(28, 27, 25, 0.12);
+  --dbd: rgba(28, 27, 25, 0.06);
+  --orange: #B54B32;
+  --ledger-green: #3C5943;
+}
 
-/* ═══ Top nav ═══ */
+/* ═══ Top nav & Hairline Register Rules ═══ */
 .dash-topnav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px 14px;
   gap: 20px;
+  border-bottom: 1px solid var(--dash-border);
 }
 
 .dash-topnav-left { display: flex; align-items: center; }
@@ -44,24 +52,123 @@
 
 .dash-brand-icon {
   width: 40px; height: 40px;
-  background: var(--df);
-  color: var(--db);
+  background: var(--orange);
+  color: #FFFFFF;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 800; font-size: 20px;
+  font-family: 'Fraunces', 'Georgia', serif; font-weight: 700; font-size: 18px;
 }
 
-.dash-page.app-dark .dash-brand-icon { background: #fffcf2; color: #1e1c1a; }
-
-.dash-brand-name {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-weight: 700; font-size: 17px; line-height: 1.1; color: var(--df);
+.dash-brand-title {
+  font-family: 'Fraunces', 'Georgia', serif;
+  font-size: 18px; font-weight: 700; color: var(--df);
+  letter-spacing: -0.01em; line-height: 1.1;
 }
-
 .dash-brand-sub {
   font-size: 9px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.12em; color: var(--dm);
+}
+
+/* ═══ Hairline Register Cards (No drop shadows) ═══ */
+.dash-card {
+  background: var(--dc);
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* Top Header Quick Action Bar */
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.dash-action-btn-seal {
+  background: #B54B32;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dash-action-btn-seal:hover { background: #963b25; }
+
+.dash-action-btn-outline {
+  background: transparent;
+  color: #1C1B19;
+  border: 1px solid rgba(28, 27, 25, 0.2);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dash-action-btn-outline:hover {
+  border-color: #B54B32;
+  color: #B54B32;
+  background: rgba(181, 75, 50, 0.04);
+}
+
+/* ═══ Left Sidebar with Text Labels ═══ */
+.dash-sidebar { display: flex; flex-direction: column; align-items: center; padding-top: 4px; width: 100%; }
+
+.dash-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--dc);
+  border: 1px solid var(--dash-border);
+  border-radius: 18px;
+  padding: 12px 6px;
+  width: 100%;
+}
+
+.dash-sidebar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: var(--dm);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dash-sidebar-btn:hover {
+  background: var(--dbd);
+  color: var(--df);
+}
+
+.dash-sidebar-btn.active {
+  background: rgba(181, 75, 50, 0.08);
+  color: #B54B32;
+}
+
+.dash-sidebar-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dm);
+}
+
+.dash-sidebar-btn.active .dash-sidebar-label {
+  color: #B54B32;
+  font-weight: 700;
 }
 
 .dash-topnav-right { display: flex; align-items: center; gap: 14px; }
@@ -541,20 +648,21 @@
 .dash-td-bold  { font-weight: 700; }
 .text-right    { text-align: right !important; }
 
-/* Status badges */
+/* Status badges — Physical Bahi-Khata Circular Ink-Stamp Marks */
 .dash-badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 10px; border-radius: 99px;
-  font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  border: 1px solid transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 10px; border-radius: 999px;
+  font-family: 'Fraunces', 'Georgia', serif;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-.dash-badge-paid    { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-.dash-badge-partial { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-.dash-badge-pending { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
-.dash-page.app-dark .dash-badge-paid    { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-.dash-page.app-dark .dash-badge-partial { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-.dash-page.app-dark .dash-badge-pending { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+.dash-badge-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
+.dash-badge-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
+.dash-badge-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }
+.dash-page.app-dark .dash-badge-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
+.dash-page.app-dark .dash-badge-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
+.dash-page.app-dark .dash-badge-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }
 
 .dash-table-footer {
   padding: 8px 20px 10px;
