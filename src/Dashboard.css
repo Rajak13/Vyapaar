@@ -25,9 +25,9 @@
   background: #121212;
 }
 
-/* ═══ CSS tokens scoped to dark & light — Strict 3-Tier Palette (WCAG AA Compliant >= 4.5:1) ═══ */
-.dash-page.app-dark  { --dc: #1E1E1E; --db: #121212; --df: #F3F4F6; --dm: #9CA3AF; --dash-border: #2E2E2E; --dbd: rgba(255,255,255,0.08); --orange: #E04F16; }
-.dash-page.app-light { --dc: #ffffff; --db: #F3F2F0; --df: #111827; --dm: #6B7280; --dash-border: #E5E7EB; --dbd: rgba(0,0,0,0.05); --orange: #E04F16; }
+/* ═══ CSS tokens scoped to dark & light — Dynamic Dual-Theme System (WCAG AA Compliant >= 4.5:1) ═══ */
+.dash-page.app-dark  { --dc: #1E1E1E; --db: #121212; --df: #F8FAFC; --dm: #9CA3AF; --dash-border: #2E2E2E; --dbd: rgba(255,255,255,0.08); --orange: #E04F16; }
+.dash-page.app-light { --dc: #FFFFFF; --db: #F8FAFC; --df: #0F172A; --dm: #64748B; --dash-border: #E2E8F0; --dbd: rgba(0,0,0,0.05); --orange: #E04F16; }
 
 /* ═══ Top nav ═══ */
 .dash-topnav {
@@ -991,7 +991,7 @@
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 32px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
   line-height: 1.1;
   margin-top: 4px;
 }
@@ -1005,7 +1005,7 @@
 .bento-period-pills {
   display: flex;
   gap: 4px;
-  background: #121212;
+  background: var(--db);
   border: 1px solid var(--dash-border);
   padding: 3px;
   border-radius: 10px;
@@ -1025,7 +1025,7 @@
 
 .bento-period-btn.active {
   background: var(--dc);
-  color: #FFFFFF;
+  color: var(--df);
   border: 1px solid var(--dash-border);
 }
 
@@ -1100,7 +1100,7 @@
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 20px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
 }
 
 .bento-trend-badge {
@@ -1111,6 +1111,88 @@
 .trend-up { color: #34d399; }
 .trend-neutral { color: var(--dm); }
 .trend-warn { color: #fbbf24; }
+
+/* Compact Transaction History List in Right Sidebar */
+.bento-tx-card {
+  padding: 16px;
+}
+
+.bento-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bento-tx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--dash-border);
+}
+
+.bento-tx-row:last-child {
+  border-bottom: none;
+}
+
+.bento-tx-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bento-tx-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(224, 79, 22, 0.12);
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bento-tx-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bento-tx-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--df);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bento-tx-sub {
+  font-size: 10px;
+  color: var(--dm);
+  margin-top: 1px;
+}
+
+.bento-tx-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.bento-tx-amount {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--df);
+}
 
 /* Quick Action Card */
 .bento-quick-action {
@@ -1124,7 +1206,7 @@
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 14px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
 }
 
 .bento-action-buttons {
@@ -1138,7 +1220,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  background: #121212;
+  background: var(--db);
   border: 1px solid var(--dash-border);
   border-radius: 12px;
   padding: 10px 4px;
@@ -1186,9 +1268,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--dbd);
   border: 1px solid var(--dash-border);
-  color: #FFFFFF;
+  color: var(--df);
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -1235,7 +1317,7 @@
 .bento-limit-bar-wrap {
   width: 100%;
   height: 12px;
-  background: #121212;
+  background: var(--db);
   border-radius: 999px;
   overflow: hidden;
   margin: 14px 0 8px;
@@ -1254,7 +1336,7 @@
   font-weight: 700;
 }
 
-.bento-limit-curr { color: #FFFFFF; }
+.bento-limit-curr { color: var(--df); }
 .bento-limit-target { color: var(--dm); }
 
 .bento-tip-eyebrow {
@@ -1269,7 +1351,7 @@
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 15px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
   margin-top: 2px;
 }
 
@@ -1323,7 +1405,7 @@
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
 }
 
 .bento-segmented-bar {
@@ -1356,7 +1438,7 @@
 
 .bento-legend-row .pct {
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--df);
 }
 
 .bento-gauge-badge {
@@ -1364,7 +1446,7 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 99px;
-  background: #121212;
+  background: var(--db);
   border: 1px solid var(--dash-border);
   color: var(--dm);
 }
@@ -1414,12 +1496,12 @@
   font-size: 11.5px;
 }
 
-.bento-goal-name { font-weight: 600; color: #FFFFFF; }
+.bento-goal-name { font-weight: 600; color: var(--df); }
 .bento-goal-val { color: var(--dm); font-size: 10.5px; }
 
 .bento-goal-track {
   height: 6px;
-  background: #121212;
+  background: var(--db);
   border-radius: 99px;
   overflow: hidden;
 }

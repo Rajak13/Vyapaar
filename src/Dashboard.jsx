@@ -413,7 +413,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   <div className="bento-limit-header">
                     <div>
                       <div className="bento-card-title">Monthly Spending Limit</div>
-                      <div className="bento-limit-sub">Current month spend vs threshold</div>
+                      <div className="bento-limit-sub">{fmtRs(stats.totalPurchasesFY)} spent of Rs. 5,00,000 Budget</div>
                     </div>
                     <span className="bento-edit-icon">✎</span>
                   </div>
@@ -424,7 +424,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   </div>
                   <div className="bento-limit-labels">
                     <span className="bento-limit-curr">{fmtRs(stats.totalPurchasesFY)}</span>
-                    <span className="bento-limit-target">Rs. 5,00,000 Budget</span>
+                    <span className="bento-limit-target">Rs. 5,00,000 Threshold</span>
                   </div>
                 </div>
 
@@ -483,7 +483,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                     <svg className="bento-gauge-svg" viewBox="0 0 200 120">
                       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--dash-border)" strokeWidth="16" strokeLinecap="round" />
                       <path d="M 20 100 A 80 80 0 0 1 150 40" fill="none" stroke="#E04F16" strokeWidth="16" strokeLinecap="round" />
-                      <text x="100" y="85" textAnchor="middle" fill="#FFFFFF" fontSize="28" fontWeight="bold">75%</text>
+                      <text x="100" y="85" textAnchor="middle" fill="var(--df)" fontSize="28" fontWeight="bold">75%</text>
                       <text x="100" y="105" textAnchor="middle" fill="var(--dm)" fontSize="10">VAT Compliance Score</text>
                     </svg>
                   </div>
@@ -527,116 +527,10 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                   </div>
                 </div>
               </div>
-
-              {/* ── ROW 4: RECENT ENTRIES TABLE / MOBILE CARDS ── */}
-              <div className="dash-card dash-table-card">
-                <div className="dash-table-header">
-                  <h4 className="dash-table-title">Recent Purchase Entries</h4>
-                  <button className="dash-view-all-btn" onClick={() => handleNavClick('register')}>
-                    <span>View all entries</span>
-                    <ChevronIcon />
-                  </button>
-                </div>
-                <div className="dash-table-wrap">
-                  <table className="dash-table">
-                    <thead>
-                      <tr>
-                        <th>Invoice No.</th>
-                        <th>Date (BS)</th>
-                        <th>Supplier</th>
-                        <th className="text-right">Taxable (Rs.)</th>
-                        <th className="text-right">Grand Total</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {entries.length === 0 && !loadingData && (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', color: 'var(--dm)', padding: '24px' }}>
-                            No entries yet — add your first purchase entry.
-                          </td>
-                        </tr>
-                      )}
-                      {entries
-                        .filter(e => {
-                          if (!searchQuery.trim()) return true
-                          const q = searchQuery.toLowerCase()
-                          return (
-                            e.invoice_no?.toLowerCase().includes(q) ||
-                            e.supplier_name?.toLowerCase().includes(q)
-                          )
-                        })
-                        .map(entry => (
-                          <tr key={entry.id}>
-                            <td className="dash-td-muted">{entry.invoice_no}</td>
-                            <td className="dash-td-muted">{entry.date_bs || adToBs(entry.date_ad) || '—'}</td>
-                            <td className="dash-td-muted">{entry.supplier_name}</td>
-                            <td className="dash-td-muted text-right">
-                              {entry.taxable_purchases > 0 ? fmtRs(entry.taxable_purchases) : '—'}
-                            </td>
-                            <td className="dash-td-bold text-right">{fmtRs(entry.grand_total)}</td>
-                            <td>
-                              <span className={`dash-badge dash-badge-${
-                                entry.paid_status === 'paid'    ? 'paid' :
-                                entry.paid_status === 'partial' ? 'partial' : 'pending'
-                              }`}>
-                                {entry.paid_status === 'paid' ? 'Paid' : entry.paid_status === 'partial' ? 'Partial' : 'Pending'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="dash-mobile-cards">
-                  {entries.length === 0 && !loadingData && (
-                    <div style={{ textAlign: 'center', color: 'var(--dm)', padding: '24px' }}>
-                      No entries yet — add your first purchase entry.
-                    </div>
-                  )}
-                  {entries
-                    .filter(e => {
-                      if (!searchQuery.trim()) return true
-                      const q = searchQuery.toLowerCase()
-                      return (
-                        e.invoice_no?.toLowerCase().includes(q) ||
-                        e.supplier_name?.toLowerCase().includes(q)
-                      )
-                    })
-                    .map(entry => (
-                      <div key={entry.id} className="dash-mobile-card">
-                        <div className="dash-mobile-card-header">
-                          <div>
-                            <span className="dash-mobile-card-inv">{entry.invoice_no}</span>
-                            <div className="dash-mobile-card-date">{entry.date_bs || adToBs(entry.date_ad) || '—'}</div>
-                          </div>
-                          <span className={`dash-badge dash-badge-${
-                            entry.paid_status === 'paid'    ? 'paid' :
-                            entry.paid_status === 'partial' ? 'partial' : 'pending'
-                          }`}>
-                            {entry.paid_status === 'paid' ? 'Paid' : entry.paid_status === 'partial' ? 'Partial' : 'Pending'}
-                          </span>
-                        </div>
-
-                        <div className="dash-mobile-card-body">
-                          <div className="dash-mobile-card-supplier">{entry.supplier_name}</div>
-                        </div>
-
-                        <div className="dash-mobile-card-footer">
-                          <span className="dash-mobile-card-label">Grand Total</span>
-                          <span className="dash-mobile-card-amount">{fmtRs(entry.grand_total)}</span>
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              </div>
             </div>)}
           </main>
 
-          {/* Right sidebar — Re-organized Vertically (Rule 4) */}
+          {/* Right sidebar — Re-organized Vertically */}
           <aside className="dash-right-sidebar">
 
             {/* 1. Fiscal Period card — real data from stats endpoint */}
@@ -685,7 +579,43 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               </button>
             </div>
 
-            {/* 3. Quick Actions Card */}
+            {/* 3. Recent Purchase Entries — Compact Transaction History Panel */}
+            <div className="dash-card bento-tx-card">
+              <div className="dash-table-header" style={{ padding: '0 0 10px 0', borderBottom: '1px solid var(--dash-border)' }}>
+                <span className="dash-section-label" style={{ margin: 0 }}>Recent Entries</span>
+                <button className="dash-view-all-btn" onClick={() => handleNavClick('register')}>
+                  <span>View all →</span>
+                </button>
+              </div>
+
+              <div className="bento-tx-list">
+                {entries.length === 0 && !loadingData && (
+                  <p style={{ fontSize: 12, color: 'var(--dm)', margin: '12px 0', textAlign: 'center' }}>No recent entries.</p>
+                )}
+                {entries.slice(0, 5).map((entry) => (
+                  <div key={entry.id} className="bento-tx-row">
+                    <div className="bento-tx-left">
+                      <div className="bento-tx-avatar">{entry.supplier_name ? entry.supplier_name.charAt(0).toUpperCase() : 'P'}</div>
+                      <div className="bento-tx-info">
+                        <span className="bento-tx-name">{entry.supplier_name || 'Purchase Entry'}</span>
+                        <span className="bento-tx-sub">{entry.invoice_no} • {entry.date_bs || adToBs(entry.date_ad) || ''}</span>
+                      </div>
+                    </div>
+                    <div className="bento-tx-right">
+                      <span className="bento-tx-amount">{fmtRs(entry.grand_total)}</span>
+                      <span className={`dash-badge dash-badge-${
+                        entry.paid_status === 'paid'    ? 'paid' :
+                        entry.paid_status === 'partial' ? 'partial' : 'pending'
+                      }`}>
+                        {entry.paid_status === 'paid' ? 'Paid' : entry.paid_status === 'partial' ? 'Partial' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Quick Actions Card */}
             <div className="dash-card bento-quick-action">
               <div className="bento-card-title">Quick Actions</div>
               <div className="bento-action-buttons">
