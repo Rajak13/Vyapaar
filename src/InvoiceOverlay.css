@@ -442,13 +442,35 @@
 
 /* ── Print styles ── */
 @media print {
-  /* Hide everything on the page except the overlay doc content */
-  body > * { display: none !important; }
-  .inv-overlay { display: block !important; position: static !important; background: none !important; backdrop-filter: none !important; padding: 0 !important; }
-  .inv-sheet { box-shadow: none !important; border-radius: 0 !important; max-height: none !important; max-width: none !important; }
-  .no-print { display: none !important; }
-  .inv-doc-scroll { overflow: visible !important; padding: 24px 32px !important; }
-  .inv-brand-logo { background: #ab2f00 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .inv-grand-total { background: #ab2f00 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .inv-doc-divider { background: #ab2f00 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  /* Hide topbar, sidebar, main background, and modal controls */
+  .dash-topnav, .dash-sidebar, .dash-main, .dash-right-sidebar, .dash-mobile-nav, .no-print {
+    display: none !important;
+  }
+  .dash-page, .dash-container {
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .inv-overlay {
+    display: block !important;
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+  .inv-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .inv-doc-scroll {
+    overflow: visible !important;
+    padding: 16px 24px !important;
+  }
+  .inv-brand-logo, .inv-grand-total, .inv-doc-divider {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
