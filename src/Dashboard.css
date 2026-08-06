@@ -337,38 +337,14 @@
 /* ═══ Body grid ═══ */
 .dash-body {
   display: grid;
-  grid-template-columns: 80px 1fr 340px;
+  grid-template-columns: 180px 1fr 300px;
   gap: 0;
   flex: 1;
   padding: 0 24px 20px;
   column-gap: 20px;
 }
 
-/* ═══ Left icon sidebar ═══ */
-.dash-sidebar { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
-
-.dash-sidebar-inner {
-  background: var(--dc);
-  border-radius: 22px;
-  padding: 8px;
-  display: flex; flex-direction: column;
-  align-items: center; gap: 2px;
-  border: 1px solid rgba(0,0,0,0.04);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-.dash-page.app-dark .dash-sidebar-inner { border-color: rgba(255,255,255,0.06); }
-
-.dash-sidebar-btn {
-  width: 40px; height: 40px; border-radius: 12px; border: none;
-  background: transparent; color: var(--dm);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.15s, color 0.15s;
-}
-.dash-sidebar-btn:hover { background: var(--dbd); color: var(--df); }
-.dash-sidebar-btn.active { background: #ffdbd1; color: #ab2f00; }
-.dash-page.app-dark .dash-sidebar-btn.active { background: rgba(235,94,40,0.2); color: #eb5e28; }
-
-.dash-sidebar-divider { width: 24px; height: 1px; background: var(--dbd); margin: 2px 0; }
+/* ═══ Left sidebar — duplicate rules removed, see Sleek Vertical Navigation Drawer above ═══ */
 
 /* ═══ Main content ═══ */
 .dash-main {
@@ -936,8 +912,19 @@
 .dash-action-btn:hover { background: #862300; transform: translateY(-1px); }
 
 /* ═══ Responsive ═══ */
+@media (max-width: 1280px) {
+  /* Collapse sidebar to icon-only strip */
+  .dash-body { grid-template-columns: 56px 1fr 280px; column-gap: 16px; }
+  .dash-sidebar-label,
+  .dash-sidebar-section-label,
+  .dash-sidebar-active-indicator { display: none; }
+  .dash-sidebar-inner { padding: 12px 8px; align-items: center; }
+  .dash-sidebar-btn { justify-content: center; padding: 10px; width: 40px; height: 40px; border-radius: 12px; }
+  .dash-sidebar-divider { width: 24px; }
+}
+
 @media (max-width: 1100px) {
-  .dash-body { grid-template-columns: 72px 1fr; }
+  .dash-body { grid-template-columns: 56px 1fr; column-gap: 16px; }
   .dash-right-sidebar { display: none; }
 }
 
