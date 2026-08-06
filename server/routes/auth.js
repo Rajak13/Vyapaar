@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
 import { config } from 'dotenv'
 import { Router } from 'express'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import pkg from 'pg'
 

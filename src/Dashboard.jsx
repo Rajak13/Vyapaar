@@ -315,26 +315,30 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                 </button>
               </div>
 
-              {/* ── Financial Command Ribbon (Minimalist Ledger Banner) ── */}
-              <div className="fin-command-bar" aria-label="Financial summary ribbon">
-                <button className="fin-cmd-pill fin-cmd-primary" onClick={() => handleNavClick('register')}>
-                  <span className="fin-cmd-label">Total Purchased (FY)</span>
-                  <span className="fin-cmd-val">{fmtRs(stats.totalPurchasesFY)}</span>
-                </button>
+              {/* ── Metric / Stat Cards Architecture (4-Col Desktop / 2x2 Mobile) ── */}
+              <div className="dash-stats-grid" aria-label="Key business metrics">
+                <div className="dash-stat-card" onClick={() => handleNavClick('register')}>
+                  <span className="dash-stat-label">Total Purchases (FY)</span>
+                  <span className="dash-stat-val">{fmtRs(stats.totalPurchasesFY)}</span>
+                  <span className="dash-stat-sub">Current fiscal year</span>
+                </div>
 
-                <button className="fin-cmd-pill fin-cmd-warn" onClick={() => handleNavClick('suppliers')}>
-                  <span className="fin-cmd-label">Payable Dues</span>
-                  <span className="fin-cmd-val">{fmtRs(stats.pendingPayments)}</span>
-                </button>
+                <div className="dash-stat-card" onClick={() => handleNavClick('suppliers')}>
+                  <span className="dash-stat-label">Payable Dues</span>
+                  <span className="dash-stat-val">{fmtRs(stats.pendingPayments)}</span>
+                  <span className="dash-stat-sub">Payable to suppliers</span>
+                </div>
 
-                <button className="fin-cmd-pill" onClick={() => handleNavClick('suppliers')}>
-                  <span className="fin-cmd-label">Active Parties</span>
-                  <span className="fin-cmd-val">{stats.activeSuppliers}</span>
-                </button>
+                <div className="dash-stat-card" onClick={() => handleNavClick('suppliers')}>
+                  <span className="dash-stat-label">Active Parties</span>
+                  <span className="dash-stat-val">{stats.activeSuppliers}</span>
+                  <span className="dash-stat-sub">Active supplier accounts</span>
+                </div>
 
-                <div className="fin-cmd-pill fin-cmd-info">
-                  <span className="fin-cmd-label">Today ({adToBs(today.toISOString().slice(0, 10)) || ''})</span>
-                  <span className="fin-cmd-val">{stats.entriesThisMonth} Entries</span>
+                <div className="dash-stat-card">
+                  <span className="dash-stat-label">Today's Entries</span>
+                  <span className="dash-stat-val">{stats.entriesThisMonth}</span>
+                  <span className="dash-stat-sub">{adToBs(today.toISOString().slice(0, 10)) || ''}</span>
                 </div>
               </div>
 
@@ -490,15 +494,6 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               </div>
               <button className="dash-manage-suppliers-btn" onClick={() => handleNavClick('suppliers')}>
                 Manage All Suppliers
-              </button>
-            </div>
-
-            <div className="dash-card dash-action-card">
-              <div className="dash-action-icon"><PlusIcon /></div>
-              <h5 className="dash-action-title">New Purchase</h5>
-              <p className="dash-action-body">Log a new purchase invoice in seconds.</p>
-              <button className="dash-action-btn" onClick={() => setShowEntryForm(true)}>
-                Add Entry Now
               </button>
             </div>
 

@@ -252,9 +252,9 @@
   letter-spacing: 0.05em;
   border: 1px solid transparent;
 }
-.sup-badge-active   { background: #ECFDF5; color: #065F46; border-color: #D1FAE5; }
-.sup-badge-inactive { background: rgba(0,0,0,0.05); color: var(--dm); border-color: var(--dash-border); }
-.dash-page.app-dark .sup-badge-active { background: rgba(6,95,70,0.2); color: #6ee7b7; border-color: rgba(6,95,70,0.3); }
+.sup-badge-active   { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+.sup-badge-inactive { background: rgba(255, 255, 255, 0.05); color: var(--dm); border-color: var(--dash-border); }
+.dash-page.app-dark .sup-badge-active { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
 
 /* Action button */
 .sup-action-btn {

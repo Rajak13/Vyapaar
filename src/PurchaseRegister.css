@@ -436,6 +436,6 @@
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
-.pr-status-paid    { background: rgba(22, 163, 74,  0.14); color: #15803d; border: 1px solid rgba(22, 163, 74,  0.25); }
-.pr-status-partial { background: rgba(202, 138, 4,  0.14); color: #b45309; border: 1px solid rgba(202, 138, 4,  0.25); }
-.pr-status-pending { background: rgba(148, 163, 184, 0.14); color: var(--dm); border: 1px solid rgba(148, 163, 184, 0.2); }
+.pr-status-paid    { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+.pr-status-partial { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+.pr-status-pending { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }

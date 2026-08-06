@@ -228,12 +228,12 @@
   letter-spacing: 0.05em;
   border: 1px solid transparent;
 }
-.pay-badge-cash   { background: #ECFDF5; color: #065F46; border-color: #D1FAE5; }
-.pay-badge-online { background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE; }
-.pay-badge-cheque { background: #FFFBEB; color: #92400E; border-color: #FEF3C7; }
-.dash-page.app-dark .pay-badge-cash   { background: rgba(6,95,70,0.2);   color: #6ee7b7; border-color: rgba(6,95,70,0.3); }
-.dash-page.app-dark .pay-badge-online { background: rgba(30,64,175,0.2); color: #93c5fd; border-color: rgba(30,64,175,0.3); }
-.dash-page.app-dark .pay-badge-cheque { background: rgba(146,64,14,0.2); color: #fbbf24; border-color: rgba(146,64,14,0.3); }
+.pay-badge-cash   { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+.pay-badge-online { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
+.pay-badge-cheque { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
+.dash-page.app-dark .pay-badge-cash   { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+.dash-page.app-dark .pay-badge-online { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
+.dash-page.app-dark .pay-badge-cheque { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
 
 /* Skeleton */
 .pay-skeleton-row td { padding: 14px 18px; border-top: 1px solid var(--dash-border); }
