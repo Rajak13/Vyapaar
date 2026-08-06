@@ -202,6 +202,7 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
 // ── Main Suppliers page ───────────────────────────────────────────────────────
 export default function Suppliers({ onToast, openForm: openFormProp }) {
   const [search,      setSearch]      = useState('')
+  const [sortBy,      setSortBy]      = useState('due_desc')
   const [showForm,    setShowForm]    = useState(false)
   const [editTarget,  setEditTarget]  = useState(null)
 
@@ -235,11 +236,21 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
   const error        = queryError?.message ?? ''
   const isRefreshing = isFetching && !loading
 
-  const filtered = suppliers.filter(s =>
-    !search.trim() ||
-    s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.supplier_pan ?? '').includes(search)
-  )
+  const filtered = suppliers
+    .filter(s =>
+      !search.trim() ||
+      s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
+      (s.supplier_pan ?? '').includes(search)
+    )
+    .sort((a, b) => {
+      if (sortBy === 'name_asc')       return (a.supplier_name || '').localeCompare(b.supplier_name || '')
+      if (sortBy === 'name_desc')      return (b.supplier_name || '').localeCompare(a.supplier_name || '')
+      if (sortBy === 'due_desc')       return parseFloat(b.balance_due ?? 0) - parseFloat(a.balance_due ?? 0)
+      if (sortBy === 'due_asc')        return parseFloat(a.balance_due ?? 0) - parseFloat(b.balance_due ?? 0)
+      if (sortBy === 'purchased_desc') return parseFloat(b.total_purchased ?? 0) - parseFloat(a.total_purchased ?? 0)
+      if (sortBy === 'paid_desc')      return parseFloat(b.total_paid ?? 0) - parseFloat(a.total_paid ?? 0)
+      return 0
+    })
 
   const totalPurchased = suppliers.reduce((a, s) => a + parseFloat(s.total_purchased ?? 0), 0)
   const totalDue       = suppliers.reduce((a, s) => a + parseFloat(s.balance_due ?? 0), 0)
@@ -311,17 +322,28 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="sup-search-wrap">
-        <SearchIcon />
-        <input
-          className="sup-search-input"
-          type="text"
-          placeholder="Search by name or PAN…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search && <button className="sup-search-clear" onClick={() => setSearch('')}>×</button>}
+      {/* Search & Sort toolbar */}
+      <div className="sup-toolbar">
+        <div className="sup-search-wrap">
+          <SearchIcon />
+          <input
+            className="sup-search-input"
+            type="text"
+            placeholder="Search by name or PAN…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {search && <button className="sup-search-clear" onClick={() => setSearch('')}>×</button>}
+        </div>
+
+        <select className="sup-filter-select sup-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort suppliers">
+          <option value="due_desc">Sort: Highest Due First</option>
+          <option value="due_asc">Sort: Lowest Due First</option>
+          <option value="name_asc">Sort: Name (A–Z)</option>
+          <option value="name_desc">Sort: Name (Z–A)</option>
+          <option value="purchased_desc">Sort: Highest Purchased</option>
+          <option value="paid_desc">Sort: Highest Paid</option>
+        </select>
       </div>
 
       {error && <div className="sup-error-banner">{error}</div>}
@@ -451,16 +473,6 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
           </div>
         ))}
       </div>
-
-      {/* Mobile floating action button — visible only on small screens via CSS */}
-      <button
-        className="sup-fab"
-        onClick={() => { setEditTarget(null); setShowForm(true) }}
-        aria-label="Add Supplier"
-      >
-        <PlusIcon />
-        <span>Add Supplier</span>
-      </button>
 
       {showForm && (
         <SupplierForm

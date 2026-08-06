@@ -304,6 +304,7 @@ export default function Payments({ onToast, openForm: openFormProp }) {
       prevOpenFormRef.current = openFormProp ?? 0
     }
   }, [openFormProp])
+  const [sortBy,          setSortBy]          = useState('date_desc')
   const [selectedPayment, setSelectedPayment] = useState(null)
   const qc = useQueryClient()
   const refresh = useCallback(() => {
@@ -314,7 +315,7 @@ export default function Payments({ onToast, openForm: openFormProp }) {
   }, [qc])
 
   // Build params string for payments query key
-  const payParamsStr = suppFilter ? `limit=50&supplier_id=${suppFilter}` : 'limit=50'
+  const payParamsStr = `limit=50${suppFilter ? `&supplier_id=${suppFilter}` : ''}${sortBy ? `&sort_by=${sortBy}` : ''}`
 
   // Supplier list (pre-fetched by Dashboard)
   const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
@@ -423,6 +424,14 @@ export default function Payments({ onToast, openForm: openFormProp }) {
         <select className="pay-filter-select" value={suppFilter} onChange={e => { setSuppFilter(e.target.value) }}>
           <option value="">All suppliers</option>
           {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+
+        <select className="pay-filter-select pay-sort-select" value={sortBy} onChange={e => { setSortBy(e.target.value) }} aria-label="Sort payments">
+          <option value="date_desc">Sort: Newest First</option>
+          <option value="date_asc">Sort: Oldest First</option>
+          <option value="amount_desc">Sort: Amount (High → Low)</option>
+          <option value="amount_asc">Sort: Amount (Low → High)</option>
+          <option value="supplier_asc">Sort: Supplier (A–Z)</option>
         </select>
       </div>
 

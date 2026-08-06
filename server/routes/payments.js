@@ -13,9 +13,15 @@ router.use(requireAuth)
 
 // GET /api/supplier-payments — list payments for this user
 router.get('/supplier-payments', async (req, res) => {
-  const { supplier_id } = req.query
+  const { supplier_id, sort_by } = req.query
   const limit  = Math.min(parseInt(req.query.limit  ?? '50', 10), 200)
   const offset = parseInt(req.query.offset ?? '0', 10)
+
+  let orderBy = 'ORDER BY sp.date_ad DESC, sp.id DESC'
+  if (sort_by === 'date_asc')       orderBy = 'ORDER BY sp.date_ad ASC, sp.id ASC'
+  else if (sort_by === 'amount_desc')   orderBy = 'ORDER BY sp.amount DESC, sp.id DESC'
+  else if (sort_by === 'amount_asc')    orderBy = 'ORDER BY sp.amount ASC, sp.id ASC'
+  else if (sort_by === 'supplier_asc')  orderBy = 'ORDER BY s.name ASC, sp.id DESC'
 
   const conditions = ['sp.user_id = $1']
   const params     = [req.user.id]
@@ -41,7 +47,7 @@ router.get('/supplier-payments', async (req, res) => {
        JOIN suppliers s ON s.id = sp.supplier_id
        LEFT JOIN purchase_entries pe ON pe.id = sp.purchase_entry_id
        ${where}
-       ORDER BY sp.date_ad DESC
+       ${orderBy}
        LIMIT $${p} OFFSET $${p + 1}`,
       params
     )

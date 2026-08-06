@@ -98,6 +98,7 @@ export default function PurchaseRegister({ theme, onToast }) {
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
+  const [sortBy,      setSortBy]      = useState('date_desc')
   const [showFilters, setShowFilters] = useState(false)
   const [page,        setPage]        = useState(0)
   const [showForm,    setShowForm]    = useState(false)
@@ -127,6 +128,7 @@ export default function PurchaseRegister({ theme, onToast }) {
   if (dateFrom)                 params.set('date_from',   dateFrom)
   if (dateTo)                   params.set('date_to',     dateTo)
   if (debouncedSearch.trim())   params.set('search',      debouncedSearch.trim())
+  if (sortBy)                   params.set('sort_by',     sortBy)
   const paramsStr = params.toString()
 
   // Supplier list (pre-fetched by Dashboard)
@@ -240,6 +242,23 @@ export default function PurchaseRegister({ theme, onToast }) {
           {search && (
             <button className="pr-search-clear" onClick={() => { setSearch(''); setPage(0); refresh() }} aria-label="Clear search">×</button>
           )}
+        </div>
+
+        <div className="pr-sort-wrap">
+          <select
+            className="pr-filter-select pr-sort-select"
+            value={sortBy}
+            onChange={e => { setSortBy(e.target.value); setPage(0) }}
+            aria-label="Sort entries"
+          >
+            <option value="date_desc">Sort: Newest First</option>
+            <option value="date_asc">Sort: Oldest First</option>
+            <option value="amount_desc">Sort: Amount (High → Low)</option>
+            <option value="amount_asc">Sort: Amount (Low → High)</option>
+            <option value="due_desc">Sort: Highest Due First</option>
+            <option value="supplier_asc">Sort: Supplier (A–Z)</option>
+            <option value="supplier_desc">Sort: Supplier (Z–A)</option>
+          </select>
         </div>
       </div>
 

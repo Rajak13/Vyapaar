@@ -152,6 +152,16 @@
   min-width: 140px;
   transition: border-color 0.15s;
 }
+
+.pr-sort-select {
+  background: var(--dc);
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  min-width: 170px;
+  cursor: pointer;
+}
 .pr-filter-select:focus,
 .pr-filter-input:focus { border-color: #ab2f00; }
 

@@ -162,7 +162,15 @@ router.get('/purchase-entries/stats', async (req, res) => {
 router.get('/purchase-entries', async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit  ?? '20', 10), 100)
   const offset = parseInt(req.query.offset ?? '0', 10)
-  const { supplier_id, fiscal_period_id, search, date_from, date_to } = req.query
+  const { supplier_id, fiscal_period_id, search, date_from, date_to, sort_by } = req.query
+
+  let orderBy = 'ORDER BY pe.date_ad DESC, pe.id DESC'
+  if (sort_by === 'date_asc')       orderBy = 'ORDER BY pe.date_ad ASC, pe.id ASC'
+  else if (sort_by === 'amount_desc')   orderBy = 'ORDER BY pe.grand_total DESC, pe.id DESC'
+  else if (sort_by === 'amount_asc')    orderBy = 'ORDER BY pe.grand_total ASC, pe.id ASC'
+  else if (sort_by === 'supplier_asc')  orderBy = 'ORDER BY s.name ASC, pe.id DESC'
+  else if (sort_by === 'supplier_desc') orderBy = 'ORDER BY s.name DESC, pe.id DESC'
+  else if (sort_by === 'due_desc')      orderBy = 'ORDER BY (pe.grand_total - COALESCE(ped.paid_amount, 0)) DESC, pe.id DESC'
 
   const conditions = ['pe.user_id = $1']
   const params     = [req.user.id]
@@ -229,7 +237,7 @@ router.get('/purchase-entries', async (req, res) => {
          GROUP BY purchase_entry_id
        ) ped ON ped.purchase_entry_id = pe.id
        ${where}
-       ORDER BY pe.date_ad DESC
+       ${orderBy}
        LIMIT $${p} OFFSET $${p + 1}`,
       params
     )
