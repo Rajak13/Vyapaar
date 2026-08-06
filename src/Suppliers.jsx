@@ -277,19 +277,19 @@ export default function Suppliers({ onToast }) {
         </div>
       </div>
 
-      {/* Financial Status Ribbon (No boxy KPI cards) */}
-      <div className="fin-command-bar" style={{ marginBottom: '12px' }}>
-        <div className="fin-cmd-pill fin-cmd-primary">
-          <span className="fin-cmd-label">Total Purchased</span>
-          <span className="fin-cmd-val">{fmtRs(totalPurchased)}</span>
+      {/* Summary cards */}
+      <div className="sup-summary-row">
+        <div className="sup-summary-card">
+          <span className="sup-summary-label">Total Purchased</span>
+          <span className="sup-summary-value">{fmtRs(totalPurchased)}</span>
         </div>
-        <div className="fin-cmd-pill fin-cmd-warn">
-          <span className="fin-cmd-label">Outstanding Balance</span>
-          <span className="fin-cmd-val">{fmtRs(totalDue)}</span>
+        <div className="sup-summary-card">
+          <span className="sup-summary-label">Outstanding Balance</span>
+          <span className="sup-summary-value">{fmtRs(totalDue)}</span>
         </div>
-        <div className="fin-cmd-pill">
-          <span className="fin-cmd-label">Active Suppliers</span>
-          <span className="fin-cmd-val">{suppliers.filter(s => s.is_active).length}</span>
+        <div className="sup-summary-card">
+          <span className="sup-summary-label">Active Suppliers</span>
+          <span className="sup-summary-value">{suppliers.filter(s => s.is_active).length}</span>
         </div>
       </div>
 

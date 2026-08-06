@@ -368,24 +368,24 @@ export default function Payments({ onToast }) {
         </button>
       </div>
 
-      {/* Financial Status Ribbon (No boxy KPI cards) */}
+      {/* Stats row */}
       {stats && (
-        <div className="fin-command-bar" style={{ marginBottom: '12px' }}>
-          <div className="fin-cmd-pill fin-cmd-info">
-            <span className="fin-cmd-label">Total Paid</span>
-            <span className="fin-cmd-val">{fmtRs(stats.total_paid)}</span>
+        <div className="pay-stats-row">
+          <div className="pay-stat-card">
+            <span className="pay-stat-label">Total Paid (All Time)</span>
+            <span className="pay-stat-value">{fmtRs(stats.total_paid)}</span>
           </div>
-          <div className="fin-cmd-pill">
-            <span className="fin-cmd-label">Cash</span>
-            <span className="fin-cmd-val">{fmtRs(stats.paid_cash)}</span>
+          <div className="pay-stat-card">
+            <span className="pay-stat-label">Cash Payments</span>
+            <span className="pay-stat-value">{fmtRs(stats.paid_cash)}</span>
           </div>
-          <div className="fin-cmd-pill">
-            <span className="fin-cmd-label">Online</span>
-            <span className="fin-cmd-val">{fmtRs(stats.paid_online)}</span>
+          <div className="pay-stat-card">
+            <span className="pay-stat-label">Online Transfers</span>
+            <span className="pay-stat-value">{fmtRs(stats.paid_online)}</span>
           </div>
-          <div className="fin-cmd-pill">
-            <span className="fin-cmd-label">Cheque</span>
-            <span className="fin-cmd-val">{fmtRs(stats.paid_cheque)}</span>
+          <div className="pay-stat-card">
+            <span className="pay-stat-label">Cheque Payments</span>
+            <span className="pay-stat-value">{fmtRs(stats.paid_cheque)}</span>
           </div>
         </div>
       )}

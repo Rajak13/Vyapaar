@@ -423,6 +423,9 @@
 }
 @keyframes sup-spin { to { transform: rotate(360deg); } }
 
+/* Mobile card list hidden on desktop */
+.sup-mobile-cards { display: none; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sup-page           { padding: 20px 16px 40px; gap: 12px; }
