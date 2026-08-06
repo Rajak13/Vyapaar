@@ -257,30 +257,33 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
         {/* ── Body grid ── */}
         <div className="dash-body">
 
-          {/* Left icon sidebar with text labels */}
+          {/* Left vertical navigation drawer sidebar */}
           <aside className="dash-sidebar">
             <div className="dash-sidebar-inner">
+              <div className="dash-sidebar-section-label">MENU</div>
               {NAV_ITEMS.map(({ key, Icon, title }) => (
                 <button
                   key={key}
                   className={`dash-sidebar-btn${activeNav === key ? ' active' : ''}`}
                   onClick={() => handleNavClick(key)}
-                  title={title}
                   aria-label={title}
                 >
-                  <Icon />
+                  <div className="dash-sidebar-icon-wrap"><Icon /></div>
                   <span className="dash-sidebar-label">{title}</span>
+                  {activeNav === key && <div className="dash-sidebar-active-indicator" />}
                 </button>
               ))}
+
               <div className="dash-sidebar-divider" />
+
+              <div className="dash-sidebar-section-label">ACCOUNT</div>
               <button
-                className="dash-sidebar-btn"
+                className="dash-sidebar-btn dash-sidebar-btn-logout"
                 onClick={handleLogout}
-                title="Log out"
                 aria-label="Log out"
               >
-                <LogoutIcon />
-                <span className="dash-sidebar-label">Logout</span>
+                <div className="dash-sidebar-icon-wrap"><LogoutIcon /></div>
+                <span className="dash-sidebar-label">Log out</span>
               </button>
             </div>
           </aside>

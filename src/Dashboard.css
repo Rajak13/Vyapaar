@@ -67,9 +67,14 @@
 
 .dash-brand-title {
   font-family: 'Fraunces', 'Georgia', serif;
-  font-size: 18px; font-weight: 700; color: var(--df);
+  font-size: 19px; font-weight: 800; color: var(--df);
   letter-spacing: -0.01em; line-height: 1.1;
 }
+
+.dash-page.app-dark .dash-brand-title {
+  color: #FFFFFF !important;
+}
+
 .dash-brand-sub {
   font-size: 9px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.12em; color: var(--dm);
@@ -123,36 +128,50 @@
   background: var(--dbd);
 }
 
-/* ═══ Left Sidebar with Text Labels ═══ */
-.dash-sidebar { display: flex; flex-direction: column; align-items: center; padding-top: 4px; width: 100%; }
+/* ═══ Sleek Vertical Navigation Drawer Sidebar ═══ */
+.dash-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+  width: 100%;
+}
 
 .dash-sidebar-inner {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: var(--dc);
   border: 1px solid var(--dash-border);
-  border-radius: 18px;
-  padding: 10px 4px;
+  border-radius: 16px;
+  padding: 16px 10px;
   width: 100%;
+  box-sizing: border-box;
+}
+
+.dash-sidebar-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dm);
+  padding: 6px 10px 2px;
 }
 
 .dash-sidebar-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 68px;
-  padding: 8px 4px;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
   border: none;
   background: transparent;
   color: var(--dm);
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   position: relative;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .dash-sidebar-btn::before,
@@ -167,24 +186,52 @@
 }
 
 .dash-sidebar-btn.active {
-  background: rgba(181, 75, 50, 0.12);
+  background: rgba(224, 79, 22, 0.1);
   color: var(--orange);
+  font-weight: 700;
+}
+
+.dash-page.app-dark .dash-sidebar-btn.active {
+  background: rgba(224, 79, 22, 0.18);
+  color: #FF6B35;
+}
+
+.dash-sidebar-icon-wrap {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .dash-sidebar-label {
-  font-size: 8.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--dm);
-  text-align: center;
-  line-height: 1.1;
-  white-space: normal;
-  max-width: 64px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+  flex: 1;
 }
 
-.dash-sidebar-btn.active .dash-sidebar-label {
-  color: var(--orange);
+.dash-sidebar-active-indicator {
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 3.5px;
+  background: var(--orange);
+  border-radius: 0 4px 4px 0;
+}
+
+.dash-sidebar-divider {
+  height: 1px;
+  background: var(--dash-border);
+  margin: 10px 6px;
+}
+
+.dash-sidebar-btn-logout:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .dash-topnav-right { display: flex; align-items: center; gap: 14px; }
