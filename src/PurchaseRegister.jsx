@@ -235,7 +235,7 @@ export default function PurchaseRegister({ theme, onToast }) {
           <input
             className="pr-search-input"
             type="text"
-            placeholder="Search by invoice no. or supplier name…"
+            placeholder="Search invoice or supplier…"
             value={search}
             onChange={e => handleSearch(e.target.value)}
           />
@@ -243,6 +243,16 @@ export default function PurchaseRegister({ theme, onToast }) {
             <button className="pr-search-clear" onClick={() => { setSearch(''); setPage(0); refresh() }} aria-label="Clear search">×</button>
           )}
         </div>
+
+        <button
+          className={`pr-btn-filter-toggle${showFilters ? ' active' : ''}${hasFilters ? ' has-filters' : ''}`}
+          onClick={() => setShowFilters(v => !v)}
+          aria-label="Toggle supplier and date filters"
+        >
+          <FilterIcon />
+          <span className="pr-filter-btn-label">Filters</span>
+          {hasFilters && <span className="pr-filter-dot" />}
+        </button>
 
         <div className="pr-sort-wrap">
           <select

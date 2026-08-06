@@ -160,27 +160,57 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
 
   const [showAdvanced, setShowAdvanced] = useState(false)
 
+  // Try restoring draft from localStorage if creating a new entry
+  const savedDraft = (!isEdit && localStorage.getItem('vyapaaar_entry_draft'))
+    ? JSON.parse(localStorage.getItem('vyapaaar_entry_draft'))
+    : null
+
   // Supplier state — { id, name } for existing, { name, isNew: true } for new
   const [supplier, setSupplier] = useState(
     initialData?.supplier_id
       ? { id: initialData.supplier_id, name: initialData.supplier_name ?? '' }
-      : null
+      : (savedDraft?.supplier ?? null)
   )
 
   const todayStr = new Date().toISOString().slice(0, 10)
-  const [dateAd,         setDateAd]         = useState(initialData?.date_ad?.slice(0,10) ?? todayStr)
-  const [dateBs,         setDateBs]         = useState(initialData?.date_bs ?? (adToBs(todayStr) || ''))
-  const [invoiceNo,      setInvoiceNo]      = useState(initialData?.invoice_no ?? '')
-  const [accountHead,    setAccountHead]    = useState(initialData?.account_head ?? '')
-  const [taxExempt,      setTaxExempt]      = useState(initialData?.tax_exempt_purchases ?? '')
-  const [taxable,        setTaxable]        = useState(initialData?.taxable_purchases ?? '')
-  const [taxImports,     setTaxImports]     = useState(initialData?.taxable_imports ?? '')
-  const [capitalTaxable, setCapitalTaxable] = useState(initialData?.capital_taxable_purchases ?? '')
-  const [taxAmount,      setTaxAmount]      = useState(initialData?.tax_amount ?? '')
-  const [autoTax,        setAutoTax]        = useState(!initialData)
-  const [notes,          setNotes]          = useState(initialData?.notes ?? '')
+  const [dateAd,         setDateAd]         = useState(initialData?.date_ad?.slice(0,10) ?? (savedDraft?.dateAd ?? todayStr))
+  const [dateBs,         setDateBs]         = useState(initialData?.date_bs ?? (savedDraft?.dateBs ?? (adToBs(todayStr) || '')))
+  const [invoiceNo,      setInvoiceNo]      = useState(initialData?.invoice_no ?? (savedDraft?.invoiceNo ?? ''))
+  const [accountHead,    setAccountHead]    = useState(initialData?.account_head ?? (savedDraft?.accountHead ?? ''))
+  const [taxExempt,      setTaxExempt]      = useState(initialData?.tax_exempt_purchases ?? (savedDraft?.taxExempt ?? ''))
+  const [taxable,        setTaxable]        = useState(initialData?.taxable_purchases ?? (savedDraft?.taxable ?? ''))
+  const [taxImports,     setTaxImports]     = useState(initialData?.taxable_imports ?? (savedDraft?.taxImports ?? ''))
+  const [capitalTaxable, setCapitalTaxable] = useState(initialData?.capital_taxable_purchases ?? (savedDraft?.capitalTaxable ?? ''))
+  const [taxAmount,      setTaxAmount]      = useState(initialData?.tax_amount ?? (savedDraft?.taxAmount ?? ''))
+  const [autoTax,        setAutoTax]        = useState(savedDraft?.autoTax ?? (!initialData))
+  const [notes,          setNotes]          = useState(initialData?.notes ?? (savedDraft?.notes ?? ''))
   const [loading,        setLoading]        = useState(false)
   const [errs,           setErrs]           = useState({})
+
+  // Auto-save draft to localStorage for new entries
+  useEffect(() => {
+    if (isEdit) return
+    const draftData = { supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, notes }
+    const hasData = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes)
+    if (hasData) {
+      localStorage.setItem('vyapaaar_entry_draft', JSON.stringify(draftData))
+    } else {
+      localStorage.removeItem('vyapaaar_entry_draft')
+    }
+  }, [isEdit, supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, notes])
+
+  // Warn on refresh if user has typed unsaved form details
+  useEffect(() => {
+    const hasUnsavedChanges = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes)
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [supplier, invoiceNo, taxable, taxExempt, notes])
 
   // Auto-fill BS date when AD date changes
   useEffect(() => {
@@ -210,6 +240,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
 
   function validate() {
     const e = {}
+    if (!invoiceNo?.trim())      e.invoiceNo = lang === 'np' ? 'बिजक / प्रज्ञापन पत्र नम्बर अनिवार्य छ।' : 'Invoice / Bill No. is required.'
     if (!dateAd)                 e.dateAd    = lang === 'np' ? 'मिति (इसवी) अनिवार्य छ।' : 'Date (AD) is required.'
     if (!supplier?.name?.trim()) e.supplier  = lang === 'np' ? 'आपूर्तिकर्ता अनिवार्य छ।' : 'Supplier is required.'
     if (totalValue <= 0)         e.values    = lang === 'np' ? 'कम्तीमा एक खरिद मूल्य भर्नुहोस्।' : 'At least one purchase value must be greater than zero.'
@@ -226,13 +257,10 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     if (Object.keys(errors).length > 0) { setErrs(errors); return }
     setErrs({}); setLoading(true)
 
-    // Auto-generate bill/invoice number if left blank in Quick Mode
-    const finalInvoiceNo = invoiceNo.trim() || `BILL-${(dateBs || dateAd).replace(/\D/g, '')}-${Math.floor(100 + Math.random() * 900)}`
-
     const body = {
       date_ad:                   dateAd,
       date_bs:                   dateBs || dateAd,
-      invoice_no:                finalInvoiceNo,
+      invoice_no:                invoiceNo.trim(),
       account_head:              accountHead.trim() || undefined,
       tax_exempt_purchases:      toNum(taxExempt),
       taxable_purchases:         toNum(taxable),
@@ -255,6 +283,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) { setErrs({ _global: json.error ?? 'Something went wrong.' }); setLoading(false); return }
+      localStorage.removeItem('vyapaaar_entry_draft')
       onSuccess(isEdit ? 'Entry updated.' : 'Purchase entry added successfully.')
       onClose()
     } catch {
@@ -291,6 +320,18 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
           {/* Supplier (Primary Quick Entry Input) */}
           <Field label={L.supplier} htmlFor="supplier" error={errs.supplier} required>
             <SupplierSearch selected={supplier} onSelect={setSupplier} error={errs.supplier} />
+          </Field>
+
+          {/* Invoice / Bill No. (Compulsory Required Field) */}
+          <Field label={L.invoice_no} htmlFor="invoice_no" error={errs.invoiceNo} required>
+            <input
+              className={`pef-input${errs.invoiceNo ? ' pef-input-error' : ''}`}
+              id="invoice_no"
+              type="text"
+              placeholder="e.g. INV-2083-001 or BILL-102"
+              value={invoiceNo}
+              onChange={e => setInvoiceNo(e.target.value)}
+            />
           </Field>
 
           {/* Primary Purchase Amount (Quick Entry) */}
@@ -330,15 +371,11 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
             className="pef-adv-toggle"
             onClick={() => setShowAdvanced(!showAdvanced)}
           >
-            <span>{showAdvanced ? '− Hide Invoice & Extra Details' : '＋ Add Invoice No, Exempt & Notes'}</span>
+            <span>{showAdvanced ? '− Hide Extra Breakdown & Notes' : '＋ Add Account Head, Exempt, Capital & Notes'}</span>
           </button>
 
           {showAdvanced && (
             <div className="pef-adv-box">
-              <Field label={L.invoice_no} htmlFor="invoice_no" error={errs.invoiceNo}>
-                <input className="pef-input" id="invoice_no" type="text" placeholder="Auto-generated if left empty" value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} />
-              </Field>
-
               <Field label={L.account_head} htmlFor="account_head">
                 <input className="pef-input" id="account_head" type="text" placeholder="e.g. Office Supplies" value={accountHead} onChange={e => setAccountHead(e.target.value)} />
               </Field>

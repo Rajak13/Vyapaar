@@ -290,6 +290,7 @@ function PaymentForm({ suppliers, onClose, onSuccess }) {
 export default function Payments({ onToast, openForm: openFormProp }) {
   const [search,      setSearch]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
+  const [methodFilter, setMethodFilter] = useState('')
   const [showForm,    setShowForm]    = useState(false)
 
   // Allow Dashboard's mobile FAB action sheet to open the form externally.
@@ -335,6 +336,7 @@ export default function Payments({ onToast, openForm: openFormProp }) {
   const { data: stats } = useQuery({ queryKey: Q.paymentStats(), queryFn: fetchPaymentStats })
 
   const filtered = payments.filter(p => {
+    if (methodFilter && p.payment_method !== methodFilter) return false
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
@@ -424,6 +426,13 @@ export default function Payments({ onToast, openForm: openFormProp }) {
         <select className="pay-filter-select" value={suppFilter} onChange={e => { setSuppFilter(e.target.value) }}>
           <option value="">All suppliers</option>
           {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+
+        <select className="pay-filter-select" value={methodFilter} onChange={e => setMethodFilter(e.target.value)} aria-label="Filter by payment method">
+          <option value="">All methods</option>
+          <option value="cash">Cash payments</option>
+          <option value="online">Online transfers</option>
+          <option value="cheque">Cheque payments</option>
         </select>
 
         <select className="pay-filter-select pay-sort-select" value={sortBy} onChange={e => { setSortBy(e.target.value) }} aria-label="Sort payments">

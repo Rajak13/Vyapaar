@@ -201,10 +201,11 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
 
 // ── Main Suppliers page ───────────────────────────────────────────────────────
 export default function Suppliers({ onToast, openForm: openFormProp }) {
-  const [search,      setSearch]      = useState('')
-  const [sortBy,      setSortBy]      = useState('due_desc')
-  const [showForm,    setShowForm]    = useState(false)
-  const [editTarget,  setEditTarget]  = useState(null)
+  const [search,        setSearch]        = useState('')
+  const [statusFilter,  setStatusFilter]  = useState('')
+  const [sortBy,        setSortBy]        = useState('due_desc')
+  const [showForm,      setShowForm]      = useState(false)
+  const [editTarget,    setEditTarget]    = useState(null)
 
   // Allow Dashboard's mobile FAB action sheet to open the Add Supplier form externally.
   // Track last-seen value so re-mounting with the same counter doesn't re-open the form.
@@ -237,11 +238,16 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
   const isRefreshing = isFetching && !loading
 
   const filtered = suppliers
-    .filter(s =>
-      !search.trim() ||
-      s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.supplier_pan ?? '').includes(search)
-    )
+    .filter(s => {
+      const due = parseFloat(s.balance_due ?? 0)
+      if (statusFilter === 'due' && due <= 0) return false
+      if (statusFilter === 'settled' && due > 0) return false
+      if (!search.trim()) return true
+      return (
+        s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
+        (s.supplier_pan ?? '').includes(search)
+      )
+    })
     .sort((a, b) => {
       if (sortBy === 'name_asc')       return (a.supplier_name || '').localeCompare(b.supplier_name || '')
       if (sortBy === 'name_desc')      return (b.supplier_name || '').localeCompare(a.supplier_name || '')
@@ -335,6 +341,12 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
           />
           {search && <button className="sup-search-clear" onClick={() => setSearch('')}>×</button>}
         </div>
+
+        <select className="sup-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="Filter suppliers by balance status">
+          <option value="">All parties</option>
+          <option value="due">Parties with balance due</option>
+          <option value="settled">Fully settled parties</option>
+        </select>
 
         <select className="sup-filter-select sup-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort suppliers">
           <option value="due_desc">Sort: Highest Due First</option>
