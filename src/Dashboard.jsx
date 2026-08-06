@@ -626,25 +626,6 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
               </div>
             </div>
 
-            {/* 4. Quick Actions Card */}
-            <div className="dash-card bento-quick-action">
-              <div className="bento-card-title">Quick Actions</div>
-              <div className="bento-action-buttons">
-                <button className="bento-action-btn" onClick={() => setShowEntryForm(true)}>
-                  <div className="bento-action-icon"><PlusIcon /></div>
-                  <span>+ Entry</span>
-                </button>
-                <button className="bento-action-btn" onClick={() => handleNavClick('payments')}>
-                  <div className="bento-action-icon"><CashIcon /></div>
-                  <span>Payment</span>
-                </button>
-                <button className="bento-action-btn" onClick={() => handleNavClick('suppliers')}>
-                  <div className="bento-action-icon"><UsersIcon /></div>
-                  <span>Supplier</span>
-                </button>
-              </div>
-            </div>
-
           </aside>
         </div>
 

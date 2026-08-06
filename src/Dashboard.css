@@ -1,31 +1,14 @@
+/* ═══ Dashboard page wrapper ═══ */
 .dash-page {
   min-height: 100vh;
-  background: #F7F5F0;
   font-family: 'Inter', sans-serif;
   padding: 20px;
   box-sizing: border-box;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-.dash-page.app-dark {
-  background: #F7F5F0;
-}
-
-/* ─ Rounded container ─ */
-.dash-container {
-  background: #F7F5F0;
-  border-radius: 24px;
-  min-height: calc(100vh - 40px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.dash-page.app-dark .dash-container {
-  background: #F7F5F0;
-}
-
-/* ═══ Physical Bahi-Khata Ledger Tokens — Strict 5-Token Palette ═══ */
-.dash-page {
+/* ═══ Dual Theme Tokens (Light Paper & Dark Theme) ═══ */
+.dash-page.app-light {
   --dc: #FFFFFF;
   --db: #F7F5F0;
   --df: #1C1B19;
@@ -34,6 +17,29 @@
   --dbd: rgba(28, 27, 25, 0.06);
   --orange: #B54B32;
   --ledger-green: #3C5943;
+  background: #F7F5F0;
+}
+
+.dash-page.app-dark {
+  --dc: #1E1E1E;
+  --db: #121212;
+  --df: #F8FAFC;
+  --dm: #9CA3AF;
+  --dash-border: #2E2E2E;
+  --dbd: rgba(255, 255, 255, 0.08);
+  --orange: #E04F16;
+  --ledger-green: #34d399;
+  background: #121212;
+}
+
+/* ─ Rounded container ─ */
+.dash-container {
+  background: var(--db);
+  border-radius: 24px;
+  min-height: calc(100vh - 40px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ═══ Top nav & Hairline Register Rules ═══ */
@@ -86,7 +92,7 @@
 }
 
 .dash-action-btn-seal {
-  background: #B54B32;
+  background: var(--orange);
   color: #FFFFFF;
   border: none;
   padding: 10px 18px;
@@ -95,14 +101,14 @@
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: opacity 0.15s;
 }
-.dash-action-btn-seal:hover { background: #963b25; }
+.dash-action-btn-seal:hover { opacity: 0.9; }
 
 .dash-action-btn-outline {
   background: transparent;
-  color: #1C1B19;
-  border: 1px solid rgba(28, 27, 25, 0.2);
+  color: var(--df);
+  border: 1px solid var(--dash-border);
   padding: 10px 16px;
   border-radius: 10px;
   font-family: 'Inter', sans-serif;
@@ -112,9 +118,9 @@
   transition: border-color 0.15s, background 0.15s;
 }
 .dash-action-btn-outline:hover {
-  border-color: #B54B32;
-  color: #B54B32;
-  background: rgba(181, 75, 50, 0.04);
+  border-color: var(--orange);
+  color: var(--orange);
+  background: var(--dbd);
 }
 
 /* ═══ Left Sidebar with Text Labels ═══ */
@@ -124,11 +130,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--dc);
   border: 1px solid var(--dash-border);
   border-radius: 18px;
-  padding: 12px 6px;
+  padding: 10px 4px;
   width: 100%;
 }
 
@@ -138,14 +144,21 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 100%;
-  padding: 10px 4px;
+  width: 68px;
+  padding: 8px 4px;
   border: none;
   background: transparent;
   color: var(--dm);
   border-radius: 12px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+
+.dash-sidebar-btn::before,
+.dash-sidebar-btn::after {
+  display: none !important;
+  content: none !important;
 }
 
 .dash-sidebar-btn:hover {
@@ -154,21 +167,24 @@
 }
 
 .dash-sidebar-btn.active {
-  background: rgba(181, 75, 50, 0.08);
-  color: #B54B32;
+  background: rgba(181, 75, 50, 0.12);
+  color: var(--orange);
 }
 
 .dash-sidebar-label {
-  font-size: 9.5px;
-  font-weight: 600;
+  font-size: 8.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: var(--dm);
+  text-align: center;
+  line-height: 1.1;
+  white-space: normal;
+  max-width: 64px;
 }
 
 .dash-sidebar-btn.active .dash-sidebar-label {
-  color: #B54B32;
-  font-weight: 700;
+  color: var(--orange);
 }
 
 .dash-topnav-right { display: flex; align-items: center; gap: 14px; }
@@ -274,7 +290,7 @@
 /* ═══ Body grid ═══ */
 .dash-body {
   display: grid;
-  grid-template-columns: 64px 1fr 340px;
+  grid-template-columns: 80px 1fr 340px;
   gap: 0;
   flex: 1;
   padding: 0 24px 20px;
