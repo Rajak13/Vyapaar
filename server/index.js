@@ -86,11 +86,14 @@ app.use('/api', settingsRouter)
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Vyapaaar API running on http://localhost:${PORT}`)
-  
-  // Auto-ensure database view on startup
+
+  // Auto-ensure database view on startup.
+  // We DROP + CREATE instead of CREATE OR REPLACE because PostgreSQL doesn't
+  // allow renaming or reordering existing view columns via REPLACE.
   import('./routes/auth.js').then(({ pool }) => {
     pool.query(`
-      CREATE OR REPLACE VIEW purchase_entry_due AS
+      DROP VIEW IF EXISTS purchase_entry_due;
+      CREATE VIEW purchase_entry_due AS
       SELECT
           pe.id                                               AS purchase_entry_id,
           pe.supplier_id,
@@ -106,6 +109,8 @@ app.listen(PORT, () => {
           WHERE purchase_entry_id IS NOT NULL
           GROUP BY purchase_entry_id
       ) paid ON paid.purchase_entry_id = pe.id;
-    `).catch(err => console.error('[DB View Init Error]', err.message))
+    `).then(() => {
+      console.log('[DB] View purchase_entry_due ensured OK.')
+    }).catch(err => console.error('[DB View Init Error]', err.message))
   }).catch(() => {})
 })
