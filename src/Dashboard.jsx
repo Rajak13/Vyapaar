@@ -592,7 +592,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
             )}
 
             {activeNav === 'settings' && (
-              <Settings onToast={onToast} user={user} />
+              <Settings onToast={onToast} user={user} onLogout={handleLogout} />
             )}
 
             {activeNav === 'overview' && (<div className="bento-container">

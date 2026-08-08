@@ -8,10 +8,11 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
   const [tab, setTab] = useState(initialTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [termsAgreed, setTermsAgreed] = useState(false)
   const overlayRef = useRef(null)
 
   // Sync tab when parent changes initialTab (e.g. Register button → opens on register)
-  useEffect(() => { setTab(initialTab); setError('') }, [initialTab])
+  useEffect(() => { setTab(initialTab); setError(''); setTermsAgreed(false) }, [initialTab])
 
   // Close on Escape
   useEffect(() => {
@@ -45,6 +46,12 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
       return
     }
 
+    if (tab === 'register' && !termsAgreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account.')
+      setLoading(false)
+      return
+    }
+
     const endpoint = tab === 'login' ? '/auth/login' : '/auth/register'
 
     try {
@@ -55,7 +62,7 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
         body: JSON.stringify(
           tab === 'login'
             ? { email: data.email, password: data.password }
-            : { email: data.email, password: data.password, full_name: data.full_name }
+            : { email: data.email, password: data.password, full_name: data.full_name, terms_agreed: true }
         ),
       })
 
@@ -188,6 +195,35 @@ export default function AuthModal({ initialTab = 'login', onClose, onSuccess }) 
                 autoComplete="new-password"
                 required
               />
+            </div>
+          )}
+
+          {tab === 'register' && (
+            <div className="auth-terms-row">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={termsAgreed}
+                className={`auth-terms-checkbox${termsAgreed ? ' auth-terms-checkbox--checked' : ''}`}
+                onClick={() => setTermsAgreed(v => !v)}
+                aria-label="Agree to Terms of Service and Privacy Policy"
+              >
+                {termsAgreed && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                )}
+              </button>
+              <span className="auth-terms-text">
+                I agree to the{' '}
+                <a href="#terms" target="_blank" rel="noopener noreferrer" className="auth-terms-link">
+                  Terms of Service
+                </a>
+                {' '}and{' '}
+                <a href="#privacy" target="_blank" rel="noopener noreferrer" className="auth-terms-link">
+                  Privacy Policy
+                </a>
+              </span>
             </div>
           )}
 

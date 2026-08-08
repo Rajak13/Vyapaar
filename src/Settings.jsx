@@ -17,6 +17,12 @@ function PlusIcon() {
 function SaveIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
 }
+function UserIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+}
+function TrashIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+}
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -29,7 +35,7 @@ function getAuthHeaders() {
   }
 }
 
-export default function Settings({ user, onToast }) {
+export default function Settings({ user, onToast, onLogout }) {
   const [businessProfile, setBusinessProfile] = useState({
     taxpayer_name: '',
     taxpayer_registration_no: '',
@@ -47,8 +53,13 @@ export default function Settings({ user, onToast }) {
   const [saving, setSaving] = useState(false)
   const [addingPeriod, setAddingPeriod] = useState(false)
   const [showAddPeriod, setShowAddPeriod] = useState(false)
-  const [activeTab, setActiveTab] = useState('business-profile') // 'business-profile' | 'fiscal-periods'
+  const [activeTab, setActiveTab] = useState('business-profile') // 'business-profile' | 'fiscal-periods' | 'account'
   const [profileBannerDismissed, setProfileBannerDismissed] = useState(false)
+  // Account deletion state
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('')
+  const [deleteError, setDeleteError]   = useState('')
+  const [deleting, setDeleting]         = useState(false)
+  const [deleteStep, setDeleteStep]     = useState(1) // 1=warning, 2=confirm input
 
   // Fetch business profile and fiscal periods on mount
   useEffect(() => {
@@ -194,6 +205,14 @@ export default function Settings({ user, onToast }) {
         >
           <CalendarIcon />
           <span>Fiscal Periods</span>
+        </button>
+        <button
+          type="button"
+          className={`set-tab ${activeTab === 'account' ? 'active' : ''}`}
+          onClick={() => setActiveTab('account')}
+        >
+          <UserIcon />
+          <span>Account</span>
         </button>
       </div>
 
@@ -455,6 +474,125 @@ export default function Settings({ user, onToast }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Account Tab ── */}
+        {activeTab === 'account' && (
+          <div className="set-card">
+            <div className="set-card-header">
+              <div>
+                <h3 className="set-card-title">Account</h3>
+                <p className="set-card-desc">Manage your account details and data</p>
+              </div>
+            </div>
+            <div className="set-card-divider" />
+
+            {/* Account info */}
+            <div className="set-account-info">
+              <div className="set-account-avatar">{user?.full_name?.[0]?.toUpperCase() ?? '?'}</div>
+              <div>
+                <div className="set-account-name">{user?.full_name}</div>
+                <div className="set-account-email">{user?.email}</div>
+              </div>
+            </div>
+
+            {/* Legal links */}
+            <div className="set-legal-row">
+              <a href="#terms" target="_blank" rel="noopener noreferrer" className="set-legal-link">
+                Terms of Service
+              </a>
+              <span className="set-legal-sep">·</span>
+              <a href="#privacy" target="_blank" rel="noopener noreferrer" className="set-legal-link">
+                Privacy Policy
+              </a>
+            </div>
+
+            <div className="set-card-divider" style={{ marginTop: 24 }} />
+
+            {/* Danger zone */}
+            <div className="set-danger-zone">
+              <div className="set-danger-header">
+                <TrashIcon />
+                <div>
+                  <div className="set-danger-title">Delete Account</div>
+                  <div className="set-danger-desc">Permanently delete your account and all data — purchases, suppliers, payments. This cannot be undone.</div>
+                </div>
+              </div>
+
+              {deleteStep === 1 && (
+                <button
+                  className="set-danger-btn"
+                  onClick={() => { setDeleteStep(2); setDeleteError('') }}
+                >
+                  Delete my account
+                </button>
+              )}
+
+              {deleteStep === 2 && (
+                <div className="set-danger-confirm">
+                  <p className="set-danger-confirm-label">
+                    Type your email address <strong>{user?.email}</strong> to confirm:
+                  </p>
+                  <input
+                    className="set-danger-input"
+                    type="email"
+                    placeholder={user?.email}
+                    value={deleteConfirmEmail}
+                    onChange={e => { setDeleteConfirmEmail(e.target.value); setDeleteError('') }}
+                    autoComplete="off"
+                  />
+                  {deleteError && (
+                    <p className="set-danger-error" role="alert">{deleteError}</p>
+                  )}
+                  <div className="set-danger-actions">
+                    <button
+                      className="set-btn-secondary"
+                      type="button"
+                      onClick={() => { setDeleteStep(1); setDeleteConfirmEmail(''); setDeleteError('') }}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="set-danger-btn-confirm"
+                      type="button"
+                      disabled={deleting || !deleteConfirmEmail}
+                      onClick={async () => {
+                        setDeleting(true)
+                        setDeleteError('')
+                        try {
+                          const res = await fetch(`${API_URL}/api/settings/account`, {
+                            method: 'DELETE',
+                            headers: getAuthHeaders(),
+                            credentials: 'include',
+                            body: JSON.stringify({ confirm_email: deleteConfirmEmail }),
+                          })
+                          const json = await res.json().catch(() => ({}))
+                          if (!res.ok) {
+                            setDeleteError(json.error ?? 'Deletion failed. Please try again.')
+                            setDeleting(false)
+                            return
+                          }
+                          // Clear local session and log out
+                          localStorage.removeItem('vyapaar_has_session')
+                          localStorage.removeItem('vyapaaar_token')
+                          if (onLogout) onLogout()
+                        } catch {
+                          setDeleteError('Could not reach the server. Check your connection.')
+                          setDeleting(false)
+                        }
+                      }}
+                    >
+                      {deleting
+                        ? <span className="auth-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} aria-hidden="true" />
+                        : <><TrashIcon /> Delete permanently</>
+                      }
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

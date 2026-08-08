@@ -99,4 +99,38 @@ router.post('/fiscal-periods', async (req, res) => {
   }
 })
 
+// DELETE /api/settings/account
+// Permanently deletes the authenticated user and all their data via CASCADE.
+// Requires { confirm_email } matching their account email as a safety check.
+router.delete('/settings/account', async (req, res) => {
+  const { confirm_email } = req.body ?? {}
+  const userId = req.user.id
+
+  if (!confirm_email) {
+    return res.status(400).json({ error: 'Please provide your email address to confirm deletion.' })
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT email FROM users WHERE id = $1', [userId])
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+
+    if (rows[0].email.toLowerCase() !== confirm_email.toLowerCase().trim()) {
+      return res.status(400).json({ error: 'Email address does not match your account.' })
+    }
+
+    // Delete user — all related data cascades via ON DELETE CASCADE on FK constraints
+    await pool.query('DELETE FROM users WHERE id = $1', [userId])
+
+    // Clear auth cookie
+    const { getCookieOptions } = await import('./auth.js')
+    const { maxAge, ...clearOptions } = getCookieOptions()
+    res.clearCookie('vyapaaar_token', clearOptions)
+
+    return res.json({ message: 'Account permanently deleted.' })
+  } catch (err) {
+    console.error('[DELETE /api/settings/account]', err)
+    return res.status(500).json({ error: 'Failed to delete account. Please try again.' })
+  }
+})
+
 export default router

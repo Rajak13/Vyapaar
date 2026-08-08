@@ -50,10 +50,14 @@ function setCookieAndRespond(res, req, user) {
 
 // ---------- POST /auth/register ----------
 router.post('/register', async (req, res) => {
-  const { email, password, full_name } = req.body ?? {}
+  const { email, password, full_name, terms_agreed } = req.body ?? {}
 
   if (!email || !password || !full_name) {
     return res.status(400).json({ error: 'Email, password, and full name are required.' })
+  }
+
+  if (!terms_agreed) {
+    return res.status(400).json({ error: 'You must agree to the Terms of Service and Privacy Policy.' })
   }
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -79,8 +83,8 @@ router.post('/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS)
 
     const { rows } = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name)
-       VALUES ($1, $2, $3)
+      `INSERT INTO users (email, password_hash, full_name, terms_agreed_at)
+       VALUES ($1, $2, $3, NOW())
        RETURNING id, email, full_name`,
       [email.toLowerCase().trim(), password_hash, trimmedName]
     )

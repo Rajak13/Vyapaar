@@ -3,6 +3,8 @@ import './App.css'
 import AuthModal from './AuthModal'
 import Toast from './Toast'
 import { queryClient } from './queryClient'
+import Terms from './Terms'
+import Privacy from './Privacy'
 
 // Code-split the post-login app — a logged-out visitor on the landing page
 // shouldn't download any of this code.
@@ -88,8 +90,16 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [sessionChecked, setSessionChecked] = useState(false)
+  const [hash, setHash] = useState(() => window.location.hash)
 
   const [hasSessionHint] = useState(() => localStorage.getItem('vyapaar_has_session') === 'true')
+
+  // Track hash changes for client-side routing
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   function handleThemeChange(newTheme) {
     setTheme(newTheme)
@@ -151,6 +161,18 @@ export default function App() {
   // Logged-out visitors render the landing page instantly (<50ms)!
   if (hasSessionHint && !sessionChecked) {
     return <AppLoader />
+  }
+
+  // ── Legal pages — accessible without login, no auth required ──
+  function handleLegalBack() {
+    window.location.hash = ''
+    setHash('')
+  }
+  if (hash === '#terms') {
+    return <Terms theme={theme} onBack={handleLegalBack} />
+  }
+  if (hash === '#privacy') {
+    return <Privacy theme={theme} onBack={handleLegalBack} />
   }
 
   function openModal(tab) { setModal(tab) }
