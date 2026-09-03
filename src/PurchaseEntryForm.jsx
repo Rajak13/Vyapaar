@@ -182,26 +182,28 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
   const [taxImports,     setTaxImports]     = useState(initialData?.taxable_imports ?? (savedDraft?.taxImports ?? ''))
   const [capitalTaxable, setCapitalTaxable] = useState(initialData?.capital_taxable_purchases ?? (savedDraft?.capitalTaxable ?? ''))
   const [taxAmount,      setTaxAmount]      = useState(initialData?.tax_amount ?? (savedDraft?.taxAmount ?? ''))
-  const [autoTax,        setAutoTax]        = useState(savedDraft?.autoTax ?? (!initialData))
-  const [notes,          setNotes]          = useState(initialData?.notes ?? (savedDraft?.notes ?? ''))
-  const [loading,        setLoading]        = useState(false)
-  const [errs,           setErrs]           = useState({})
+  const [autoTax,                setAutoTax]                = useState(savedDraft?.autoTax ?? (!initialData))
+  const [isMissedBill,           setIsMissedBill]           = useState(initialData?.is_missed_bill ?? (savedDraft?.isMissedBill ?? false))
+  const [claimedFiscalPeriodId,  setClaimedFiscalPeriodId]  = useState(initialData?.claimed_fiscal_period_id ?? (savedDraft?.claimedFiscalPeriodId ?? ''))
+  const [notes,                  setNotes]                  = useState(initialData?.notes ?? (savedDraft?.notes ?? ''))
+  const [loading,                setLoading]                = useState(false)
+  const [errs,                   setErrs]                   = useState({})
 
   // Auto-save draft to localStorage for new entries
   useEffect(() => {
     if (isEdit) return
-    const draftData = { supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, notes }
-    const hasData = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes)
+    const draftData = { supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, isMissedBill, claimedFiscalPeriodId, notes }
+    const hasData = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes || isMissedBill)
     if (hasData) {
       localStorage.setItem('vyapaaar_entry_draft', JSON.stringify(draftData))
     } else {
       localStorage.removeItem('vyapaaar_entry_draft')
     }
-  }, [isEdit, supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, notes])
+  }, [isEdit, supplier, dateAd, dateBs, invoiceNo, accountHead, taxExempt, taxable, taxImports, capitalTaxable, taxAmount, autoTax, isMissedBill, claimedFiscalPeriodId, notes])
 
   // Warn on refresh if user has typed unsaved form details
   useEffect(() => {
-    const hasUnsavedChanges = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes)
+    const hasUnsavedChanges = Boolean(supplier?.name || invoiceNo || taxable || taxExempt || notes || isMissedBill)
     const handleBeforeUnload = (e) => {
       if (hasUnsavedChanges) {
         e.preventDefault()
@@ -210,7 +212,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [supplier, invoiceNo, taxable, taxExempt, notes])
+  }, [supplier, invoiceNo, taxable, taxExempt, notes, isMissedBill])
 
   // Auto-fill BS date when AD date changes
   useEffect(() => {
@@ -267,6 +269,8 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
       taxable_imports:           toNum(taxImports),
       capital_taxable_purchases: toNum(capitalTaxable),
       tax_amount:                toNum(taxAmount),
+      is_missed_bill:            Boolean(isMissedBill),
+      claimed_fiscal_period_id:  isMissedBill && claimedFiscalPeriodId ? parseInt(claimedFiscalPeriodId, 10) : undefined,
       notes:                     notes.trim() || undefined,
       ...(supplier?.id ? { supplier_id: supplier.id } : { supplier_name: supplier?.name }),
     }
@@ -394,6 +398,27 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
               </Field>
             </div>
           )}
+
+          {/* ── Mark as Missed Bill checkbox ── */}
+          <div className={`pef-missed-bill-row${isMissedBill ? ' active' : ''}`}>
+            <label className="pef-missed-toggle-label">
+              <input
+                type="checkbox"
+                checked={isMissedBill}
+                onChange={e => setIsMissedBill(e.target.checked)}
+              />
+              <span className="pef-missed-title">
+                {lang === 'np' ? 'छूट भएको खरिद बिलको रूपमा चिन्ह लगाउनुहोस् (Mark as Missed Bill)' : 'Mark as Missed / Late Bill (छूट खरिद बिल)'}
+              </span>
+            </label>
+            {isMissedBill && (
+              <div className="pef-missed-desc">
+                {lang === 'np'
+                  ? '✓ यो बिल पुरानो महिनाको बन्द प्रतिवेदन नबिगारी चालू महिनाको कर विवरणमा दाबी गरिनेछ।'
+                  : '✓ Retains original transaction date without altering closed past monthly returns.'}
+              </div>
+            )}
+          </div>
 
           {/* Live totals */}
           <div className="pef-totals">

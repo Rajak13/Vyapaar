@@ -97,8 +97,11 @@ router.get('/purchase-entries/stats', async (req, res) => {
       pool.query(
         `SELECT
            COALESCE(SUM(pe.grand_total), 0)  AS total_fy,
-           COALESCE(SUM(pe.grand_total) FILTER (WHERE pe.date_ad >= date_trunc('month', now())), 0) AS total_month,
-           COALESCE(SUM(pe.tax_amount),  0)  AS tax_total
+           COALESCE(SUM(pe.grand_total) FILTER (WHERE pe.date_ad >= date_trunc('month', now()) AND pe.is_missed_bill = false), 0) AS total_month,
+           COALESCE(SUM(pe.tax_amount),  0)  AS tax_total,
+           COALESCE(SUM(pe.grand_total) FILTER (WHERE pe.is_missed_bill = true), 0) AS missed_total_purchases,
+           COALESCE(SUM(pe.tax_amount)  FILTER (WHERE pe.is_missed_bill = true), 0) AS missed_tax_total,
+           COUNT(*) FILTER (WHERE pe.is_missed_bill = true)::int AS missed_count
          FROM purchase_entries pe
          LEFT JOIN fiscal_periods fp ON fp.id = pe.fiscal_period_id
          WHERE pe.user_id = $1 AND (fp.fiscal_year_bs = $2 OR pe.fiscal_period_id IS NULL)`,
@@ -118,6 +121,52 @@ router.get('/purchase-entries/stats', async (req, res) => {
     const fiscalYearBs     = todayFpRes.rows[0]?.fiscal_year_bs || defaultFyLabel
     const fiscalMonthIndex = todayFpRes.rows[0]?.fiscal_month_index || 1
 
+    const BS_MONTHS = ['','Baisakh','Jestha','Ashad','Shrawan','Bhadra','Ashwin',
+                       'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
+
+    // Comprehensive Nepali monthly purchase & VAT tax breakdown for this fiscal year
+    const { rows: monthlyBreakdown } = await pool.query(
+      `SELECT
+         fp.id AS fiscal_period_id,
+         fp.bs_year,
+         fp.bs_month,
+         fp.fiscal_month_index,
+         COALESCE(SUM(pe.grand_total) FILTER (WHERE pe.is_missed_bill = false), 0)::float        AS regular_purchases,
+         COALESCE(SUM(pe.taxable_purchases) FILTER (WHERE pe.is_missed_bill = false), 0)::float  AS taxable_purchases,
+         COALESCE(SUM(pe.tax_exempt_purchases) FILTER (WHERE pe.is_missed_bill = false), 0)::float AS tax_exempt_purchases,
+         COALESCE(SUM(pe.tax_amount) FILTER (WHERE pe.is_missed_bill = false), 0)::float        AS regular_tax,
+         COUNT(pe.id) FILTER (WHERE pe.is_missed_bill = false)::int                             AS regular_entries_count,
+         -- Missed bills claimed in this period
+         COALESCE(mb.missed_purchases_claimed, 0)::float                                         AS missed_purchases_claimed,
+         COALESCE(mb.missed_tax_claimed, 0)::float                                               AS missed_tax_claimed,
+         COALESCE(mb.missed_count_claimed, 0)::int                                               AS missed_count_claimed
+       FROM fiscal_periods fp
+       LEFT JOIN purchase_entries pe
+              ON pe.fiscal_period_id = fp.id AND pe.user_id = $2
+       LEFT JOIN (
+         SELECT
+           claimed_fiscal_period_id,
+           SUM(grand_total) AS missed_purchases_claimed,
+           SUM(tax_amount)  AS missed_tax_claimed,
+           COUNT(*)         AS missed_count_claimed
+         FROM purchase_entries
+         WHERE user_id = $2 AND is_missed_bill = true AND claimed_fiscal_period_id IS NOT NULL
+         GROUP BY claimed_fiscal_period_id
+       ) mb ON mb.claimed_fiscal_period_id = fp.id
+       WHERE fp.fiscal_year_bs = $1 AND fp.user_id = $2
+       GROUP BY fp.id, fp.bs_year, fp.bs_month, fp.fiscal_month_index,
+                mb.missed_purchases_claimed, mb.missed_tax_claimed, mb.missed_count_claimed
+       ORDER BY fp.fiscal_month_index ASC`,
+      [fiscalYearBs, userId]
+    )
+
+    const formattedMonthly = monthlyBreakdown.map(m => ({
+      ...m,
+      month_name: BS_MONTHS[m.bs_month] || `Month ${m.bs_month}`,
+      total_vat_claimable: Number((m.regular_tax + m.missed_tax_claimed).toFixed(2)),
+      total_purchases_net: Number((m.regular_purchases + m.missed_purchases_claimed).toFixed(2)),
+    }))
+
     const { rows: fps } = await pool.query(
       `SELECT fp.fiscal_year_bs, fp.bs_year, fp.bs_month, fp.fiscal_month_index,
               COUNT(pe.id) AS entry_count
@@ -130,9 +179,6 @@ router.get('/purchase-entries/stats', async (req, res) => {
       [fiscalYearBs, userId]
     )
 
-    const BS_MONTHS = ['','Baisakh','Jestha','Ashad','Shrawan','Bhadra','Ashwin',
-                       'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']
-
     const fiscalRange = fps.length > 0
       ? `${BS_MONTHS[fps[0].bs_month]} — ${BS_MONTHS[fps[fps.length - 1].bs_month]}`
       : 'Shrawan — Ashad'
@@ -141,11 +187,15 @@ router.get('/purchase-entries/stats', async (req, res) => {
       : 0
 
     return res.json({
-      totalPurchasesFY:    Number(totalsRes.rows[0].total_fy),
-      totalPurchasesMonth: Number(totalsRes.rows[0].total_month),
-      taxTotal:            Number(totalsRes.rows[0].tax_total),
-      activeSuppliers:     Number(suppliersRes.rows[0].count),
-      entriesThisMonth:    Number(currentMonthRes.rows[0].count),
+      totalPurchasesFY:      Number(totalsRes.rows[0].total_fy),
+      totalPurchasesMonth:   Number(totalsRes.rows[0].total_month),
+      taxTotal:              Number(totalsRes.rows[0].tax_total),
+      missedBillsCount:      Number(totalsRes.rows[0].missed_count ?? 0),
+      missedBillsPurchases:  Number(totalsRes.rows[0].missed_total_purchases ?? 0),
+      missedBillsTax:        Number(totalsRes.rows[0].missed_tax_total ?? 0),
+      activeSuppliers:       Number(suppliersRes.rows[0].count),
+      entriesThisMonth:      Number(currentMonthRes.rows[0].count),
+      monthlyBreakdown:      formattedMonthly,
       fiscal: fiscalYearBs ? {
         label:    fiscalYearBs,
         range:    fiscalRange,
@@ -162,7 +212,7 @@ router.get('/purchase-entries/stats', async (req, res) => {
 router.get('/purchase-entries', async (req, res) => {
   const limit  = Math.min(parseInt(req.query.limit  ?? '20', 10), 100)
   const offset = parseInt(req.query.offset ?? '0', 10)
-  const { supplier_id, fiscal_period_id, search, date_from, date_to, sort_by } = req.query
+  const { supplier_id, fiscal_period_id, search, date_from, date_to, sort_by, is_missed_bill } = req.query
 
   let orderBy = 'ORDER BY pe.date_ad DESC, pe.id DESC'
   if (sort_by === 'date_asc')       orderBy = 'ORDER BY pe.date_ad ASC, pe.id ASC'
@@ -183,6 +233,11 @@ router.get('/purchase-entries', async (req, res) => {
   if (fiscal_period_id) {
     conditions.push(`pe.fiscal_period_id = $${p++}`)
     params.push(parseInt(fiscal_period_id, 10))
+  }
+  if (is_missed_bill === 'true') {
+    conditions.push(`pe.is_missed_bill = true`)
+  } else if (is_missed_bill === 'false') {
+    conditions.push(`pe.is_missed_bill = false`)
   }
   if (search?.trim()) {
     conditions.push(`(pe.invoice_no ILIKE $${p} OR s.name ILIKE $${p})`)
@@ -216,6 +271,10 @@ router.get('/purchase-entries', async (req, res) => {
          pe.tax_amount,
          pe.total_value,
          pe.grand_total,
+         pe.is_missed_bill,
+         pe.claimed_fiscal_period_id,
+         cfp.fiscal_year_bs AS claimed_fy,
+         cfp.bs_month AS claimed_bs_month,
          pe.notes,
          pe.created_at,
          s.id   AS supplier_id,
@@ -230,6 +289,7 @@ router.get('/purchase-entries', async (req, res) => {
          END AS paid_status
        FROM purchase_entries pe
        JOIN suppliers s ON s.id = pe.supplier_id
+       LEFT JOIN fiscal_periods cfp ON cfp.id = pe.claimed_fiscal_period_id
        LEFT JOIN (
          SELECT purchase_entry_id, SUM(amount) AS paid_amount
          FROM supplier_payments
@@ -268,6 +328,7 @@ router.post('/purchase-entries', async (req, res) => {
     date_bs, date_ad, invoice_no, supplier_id, supplier_name, supplier_pan,
     account_head, tax_exempt_purchases, taxable_purchases, taxable_imports,
     capital_taxable_purchases, tax_amount, notes, fiscal_period_id, business_profile_id,
+    is_missed_bill, claimed_fiscal_period_id,
   } = req.body ?? {}
 
   if (!date_ad)             return res.status(400).json({ error: 'Date (AD) is required.' })
@@ -361,13 +422,26 @@ router.post('/purchase-entries', async (req, res) => {
       return res.status(400).json({ error: 'Could not determine fiscal period. Please set up fiscal periods in Settings first.' })
     }
 
+    // Resolve claimed fiscal period if marked as a missed / late bill
+    const isMissed = Boolean(is_missed_bill)
+    let claimedFpId = claimed_fiscal_period_id ? parseInt(claimed_fiscal_period_id, 10) : null
+    if (isMissed && !claimedFpId) {
+      // Default to user's active/latest period (or fpId)
+      const { rows: activeFp } = await client.query(
+        `SELECT id FROM fiscal_periods WHERE user_id = $1 ORDER BY bs_year DESC, bs_month DESC LIMIT 1`,
+        [req.user.id]
+      )
+      claimedFpId = activeFp[0]?.id ?? fpId
+    }
+
     const { rows } = await client.query(
       `INSERT INTO purchase_entries (
          business_profile_id, fiscal_period_id, date_bs, date_ad,
          invoice_no, supplier_id, account_head,
          tax_exempt_purchases, taxable_purchases, taxable_imports,
-         capital_taxable_purchases, tax_amount, notes, user_id
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         capital_taxable_purchases, tax_amount, notes, user_id,
+         is_missed_bill, claimed_fiscal_period_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         bpId, fpId, date_bs ?? '', date_ad, invoice_no.trim(),
@@ -375,6 +449,7 @@ router.post('/purchase-entries', async (req, res) => {
         parseNumeric(tax_exempt_purchases), parseNumeric(taxable_purchases),
         parseNumeric(taxable_imports), parseNumeric(capital_taxable_purchases),
         parseNumeric(tax_amount), notes?.trim() || null, req.user.id,
+        isMissed, isMissed ? claimedFpId : null,
       ]
     )
 
@@ -398,6 +473,7 @@ router.put('/purchase-entries/:id', async (req, res) => {
     date_bs, date_ad, invoice_no, supplier_id,
     account_head, tax_exempt_purchases, taxable_purchases, taxable_imports,
     capital_taxable_purchases, tax_amount, notes, fiscal_period_id,
+    is_missed_bill, claimed_fiscal_period_id,
   } = req.body ?? {}
 
   if (!date_ad)            return res.status(400).json({ error: 'Date (AD) is required.' })
@@ -427,13 +503,17 @@ router.put('/purchase-entries/:id', async (req, res) => {
       }
     }
 
+    const isMissed = is_missed_bill !== undefined ? Boolean(is_missed_bill) : false
+    const claimedFp = isMissed && claimed_fiscal_period_id ? parseInt(claimed_fiscal_period_id, 10) : null
+
     const { rows } = await pool.query(
       `UPDATE purchase_entries SET
          date_bs = $1, date_ad = $2, invoice_no = $3, supplier_id = $4,
          account_head = $5, tax_exempt_purchases = $6, taxable_purchases = $7,
          taxable_imports = $8, capital_taxable_purchases = $9, tax_amount = $10,
-         notes = $11, fiscal_period_id = COALESCE($12, fiscal_period_id)
-       WHERE id = $13 AND user_id = $14
+         notes = $11, fiscal_period_id = COALESCE($12, fiscal_period_id),
+         is_missed_bill = $13, claimed_fiscal_period_id = $14
+       WHERE id = $15 AND user_id = $16
        RETURNING *`,
       [
         date_bs ?? '', date_ad, invoice_no.trim(),
@@ -442,7 +522,7 @@ router.put('/purchase-entries/:id', async (req, res) => {
         parseNumeric(tax_exempt_purchases), parseNumeric(taxable_purchases),
         parseNumeric(taxable_imports), parseNumeric(capital_taxable_purchases),
         parseNumeric(tax_amount), notes?.trim() || null,
-        fpId, id, req.user.id,
+        fpId, isMissed, claimedFp, id, req.user.id,
       ]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Purchase entry not found.' })
@@ -461,8 +541,8 @@ router.delete('/purchase-entries/:id', async (req, res) => {
   try {
     await client.query('BEGIN')
     await client.query(
-      `UPDATE supplier_payments SET purchase_entry_id = NULL WHERE purchase_entry_id = $1`,
-      [id]
+      `UPDATE supplier_payments SET purchase_entry_id = NULL WHERE purchase_entry_id = $1 AND user_id = $2`,
+      [id, req.user.id]
     )
     const { rows } = await client.query(
       `DELETE FROM purchase_entries WHERE id = $1 AND user_id = $2 RETURNING id`,

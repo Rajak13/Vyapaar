@@ -13,7 +13,7 @@ router.use(requireAuth)
 router.get('/suppliers', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, pan, phone, address
+      `SELECT id, name, pan, phone, address, COALESCE(opening_balance, 0) AS opening_balance, is_active
        FROM suppliers
        WHERE is_active = true AND user_id = $1
        ORDER BY name ASC`,
@@ -28,18 +28,20 @@ router.get('/suppliers', async (req, res) => {
 
 // POST /api/suppliers — create a new supplier for this user
 router.post('/suppliers', async (req, res) => {
-  const { name, pan, phone, address } = req.body ?? {}
+  const { name, pan, phone, address, opening_balance } = req.body ?? {}
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Supplier name is required.' })
   }
 
+  const ob = parseFloat(opening_balance) || 0
+
   try {
     const { rows } = await pool.query(
-      `INSERT INTO suppliers (name, pan, phone, address, user_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, pan, phone, address`,
-      [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null, req.user.id]
+      `INSERT INTO suppliers (name, pan, phone, address, opening_balance, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, pan, phone, address, opening_balance`,
+      [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null, ob, req.user.id]
     )
     return res.status(201).json({ supplier: rows[0] })
   } catch (err) {
@@ -51,20 +53,22 @@ router.post('/suppliers', async (req, res) => {
 // PUT /api/suppliers/:id — update supplier (scoped to user)
 router.put('/suppliers/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const { name, pan, phone, address, is_active } = req.body ?? {}
+  const { name, pan, phone, address, opening_balance, is_active } = req.body ?? {}
 
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Supplier name is required.' })
   }
 
+  const ob = parseFloat(opening_balance) || 0
+
   try {
     const { rows } = await pool.query(
       `UPDATE suppliers
-       SET name = $1, pan = $2, phone = $3, address = $4, is_active = $5
-       WHERE id = $6 AND user_id = $7
-       RETURNING id, name, pan, phone, address, is_active`,
+       SET name = $1, pan = $2, phone = $3, address = $4, opening_balance = $5, is_active = $6
+       WHERE id = $7 AND user_id = $8
+       RETURNING id, name, pan, phone, address, opening_balance, is_active`,
       [name.trim(), pan?.trim() || null, phone?.trim() || null, address?.trim() || null,
-       is_active !== undefined ? is_active : true, id, req.user.id]
+       ob, is_active !== undefined ? is_active : true, id, req.user.id]
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
     return res.json({ supplier: rows[0] })
@@ -106,9 +110,11 @@ router.get('/suppliers/balances', async (req, res) => {
          s.address,
          s.is_active,
          s.created_at,
+         COALESCE(s.opening_balance, 0)                      AS opening_balance,
          COALESCE(pe.total_purchased, 0)                     AS total_purchased,
          COALESCE(sp.total_paid, 0)                          AS total_paid,
-         COALESCE(pe.total_purchased, 0)
+         COALESCE(s.opening_balance, 0)
+           + COALESCE(pe.total_purchased, 0)
            - COALESCE(sp.total_paid, 0)                      AS balance_due
        FROM suppliers s
        LEFT JOIN (
@@ -141,20 +147,29 @@ router.get('/suppliers/:id/balance', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
-         COALESCE(SUM(pe.grand_total), 0)                       AS total_purchased,
-         COALESCE((
-           SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.user_id = $2
-         ), 0)                                                   AS total_paid,
-         COALESCE(SUM(pe.grand_total), 0) - COALESCE((
-           SELECT SUM(sp.amount) FROM supplier_payments sp
-           WHERE sp.supplier_id = $1 AND sp.user_id = $2
-         ), 0)                                                   AS balance_due
-       FROM purchase_entries pe
-       WHERE pe.supplier_id = $1 AND pe.user_id = $2`,
+         COALESCE(s.opening_balance, 0)                         AS opening_balance,
+         COALESCE(pe.total_purchased, 0)                        AS total_purchased,
+         COALESCE(sp.total_paid, 0)                             AS total_paid,
+         COALESCE(s.opening_balance, 0)
+           + COALESCE(pe.total_purchased, 0)
+           - COALESCE(sp.total_paid, 0)                         AS balance_due
+       FROM suppliers s
+       LEFT JOIN (
+         SELECT supplier_id, SUM(grand_total) AS total_purchased
+         FROM purchase_entries
+         WHERE supplier_id = $1 AND user_id = $2
+         GROUP BY supplier_id
+       ) pe ON pe.supplier_id = s.id
+       LEFT JOIN (
+         SELECT supplier_id, SUM(amount) AS total_paid
+         FROM supplier_payments
+         WHERE supplier_id = $1 AND user_id = $2
+         GROUP BY supplier_id
+       ) sp ON sp.supplier_id = s.id
+       WHERE s.id = $1 AND s.user_id = $2`,
       [id, req.user.id]
     )
-    return res.json(rows[0] ?? { total_purchased: 0, total_paid: 0, balance_due: 0 })
+    return res.json(rows[0] ?? { opening_balance: 0, total_purchased: 0, total_paid: 0, balance_due: 0 })
   } catch (err) {
     console.error('[GET /api/suppliers/:id/balance]', err)
     return res.status(500).json({ error: 'Failed to load supplier balance.' })

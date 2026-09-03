@@ -28,14 +28,15 @@ CREATE TABLE IF NOT EXISTS business_profile (
 
 -- Suppliers (scoped to user)
 CREATE TABLE IF NOT EXISTS suppliers (
-    id          SERIAL PRIMARY KEY,
-    name        TEXT NOT NULL,
-    pan         TEXT,
-    phone       TEXT,
-    address     TEXT,
-    is_active   BOOLEAN NOT NULL DEFAULT true,
-    user_id     INT REFERENCES users(id) ON DELETE CASCADE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id               SERIAL PRIMARY KEY,
+    name             TEXT NOT NULL,
+    pan              TEXT,
+    phone            TEXT,
+    address          TEXT,
+    opening_balance  NUMERIC(14,2) NOT NULL DEFAULT 0,
+    is_active        BOOLEAN NOT NULL DEFAULT true,
+    user_id          INT REFERENCES users(id) ON DELETE CASCADE,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT suppliers_user_name_unique UNIQUE (user_id, name)
 );
 
@@ -81,6 +82,8 @@ CREATE TABLE IF NOT EXISTS purchase_entries (
                                     tax_exempt_purchases + taxable_purchases +
                                     taxable_imports + capital_taxable_purchases + tax_amount
                                 ) STORED,
+    is_missed_bill              BOOLEAN NOT NULL DEFAULT false,
+    claimed_fiscal_period_id   INT REFERENCES fiscal_periods(id),
     notes                       TEXT,
     user_id                     INT REFERENCES users(id) ON DELETE SET NULL,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),

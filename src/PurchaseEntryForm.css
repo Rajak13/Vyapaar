@@ -241,6 +241,44 @@
   text-align: center;
 }
 
+/* ── Missed Bill Toggle Row ── */
+.pef-missed-bill-row {
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: background 0.15s;
+}
+.pef-missed-bill-row.active {
+  background: rgba(235, 94, 40, 0.08);
+  border: 1px dashed rgba(235, 94, 40, 0.4);
+}
+
+.pef-missed-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+}
+.pef-missed-toggle-label input[type="checkbox"] {
+  accent-color: #eb5e28;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.pef-missed-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #eb5e28;
+}
+.pef-missed-desc {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(204, 197, 185, 0.8);
+  padding-left: 25px;
+}
+
 /* ── Live totals ── */
 .pef-totals {
   background: rgba(204, 197, 185, 0.05);

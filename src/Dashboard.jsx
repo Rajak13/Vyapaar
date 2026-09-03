@@ -404,14 +404,19 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
 
   // ── Derive overview values from query data ────────────────────────────────
   const stats = {
-    totalPurchasesFY:  statsData?.totalPurchasesFY  ?? 0,
-    activeSuppliers:   statsData?.activeSuppliers   ?? 0,
-    pendingPayments:   balancesData?.suppliers
+    totalPurchasesFY:      statsData?.totalPurchasesFY      ?? 0,
+    totalPurchasesMonth:   statsData?.totalPurchasesMonth   ?? 0,
+    activeSuppliers:       statsData?.activeSuppliers       ?? 0,
+    pendingPayments:       balancesData?.suppliers
       ? balancesData.suppliers.reduce((s, sup) => s + Math.max(0, parseFloat(sup.balance_due ?? 0)), 0)
       : 0,
-    entriesThisMonth:  statsData?.entriesThisMonth  ?? 0,
-    taxTotal:          statsData?.taxTotal           ?? 0,
-    fiscal:            statsData?.fiscal             ?? null,
+    entriesThisMonth:      statsData?.entriesThisMonth      ?? 0,
+    taxTotal:              statsData?.taxTotal               ?? 0,
+    missedBillsCount:      statsData?.missedBillsCount      ?? 0,
+    missedBillsPurchases:  statsData?.missedBillsPurchases  ?? 0,
+    missedBillsTax:        statsData?.missedBillsTax        ?? 0,
+    monthlyBreakdown:      statsData?.monthlyBreakdown      ?? [],
+    fiscal:                statsData?.fiscal                 ?? null,
   }
 
   const entries      = entriesData?.entries ?? []
@@ -619,7 +624,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
                     <div>
                       <div className="bento-chart-eyebrow">Monthly Purchases Trend</div>
                       <div className="bento-chart-amount">{fmtRs(stats.totalPurchasesFY)}</div>
-                      <div className="bento-chart-sub">Last 8 months — purchases vs VAT</div>
+                      <div className="bento-chart-sub">Last 8 months — regular purchases vs VAT</div>
                     </div>
                   </div>
                   <MonthlyBarChart data={chartsData?.monthly ?? []} />

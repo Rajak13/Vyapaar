@@ -99,8 +99,9 @@ export default function PurchaseRegister({ theme, onToast }) {
   const [dateTo,      setDateTo]      = useState('')
   const [suppFilter,  setSuppFilter]  = useState('')
   const [sortBy,      setSortBy]      = useState('date_desc')
-  const [showFilters, setShowFilters] = useState(false)
+  const [billTypeFilter,  setBillTypeFilter]  = useState('all')
   const [page,        setPage]        = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
   const [showForm,    setShowForm]    = useState(false)
   const [editEntry,   setEditEntry]   = useState(null)
   const [selectedEntry, setSelectedEntry] = useState(null)
@@ -127,6 +128,8 @@ export default function PurchaseRegister({ theme, onToast }) {
   if (suppFilter)               params.set('supplier_id', suppFilter)
   if (dateFrom)                 params.set('date_from',   dateFrom)
   if (dateTo)                   params.set('date_to',     dateTo)
+  if (billTypeFilter === 'regular') params.set('is_missed_bill', 'false')
+  if (billTypeFilter === 'missed')  params.set('is_missed_bill', 'true')
   if (debouncedSearch.trim())   params.set('search',      debouncedSearch.trim())
   if (sortBy)                   params.set('sort_by',     sortBy)
   const paramsStr = params.toString()
@@ -147,7 +150,7 @@ export default function PurchaseRegister({ theme, onToast }) {
   const isRefreshing = isFetching && !loading   // background refresh, data already present
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
-  const hasFilters = Boolean(search || suppFilter || dateFrom || dateTo)
+  const hasFilters = Boolean(search || suppFilter || dateFrom || dateTo || billTypeFilter !== 'all')
 
   function handleEntrySuccess(msg) {
     setShowForm(false)
@@ -272,6 +275,28 @@ export default function PurchaseRegister({ theme, onToast }) {
         </div>
       </div>
 
+      {/* ── Bill Type Filter Pills (Regular vs Missed Bills) ── */}
+      <div className="pr-type-pills">
+        <button
+          className={`pr-type-pill${billTypeFilter === 'all' ? ' active' : ''}`}
+          onClick={() => { setBillTypeFilter('all'); setPage(0) }}
+        >
+          All Entries
+        </button>
+        <button
+          className={`pr-type-pill${billTypeFilter === 'regular' ? ' active' : ''}`}
+          onClick={() => { setBillTypeFilter('regular'); setPage(0) }}
+        >
+          Regular Bills
+        </button>
+        <button
+          className={`pr-type-pill pr-type-pill-missed${billTypeFilter === 'missed' ? ' active' : ''}`}
+          onClick={() => { setBillTypeFilter('missed'); setPage(0) }}
+        >
+          Missed Bills (छूट बिल)
+        </button>
+      </div>
+
       {showFilters && (
         <div className="pr-filters">
           <div className="pr-filter-group">
@@ -279,6 +304,18 @@ export default function PurchaseRegister({ theme, onToast }) {
             <select className="pr-filter-select" value={suppFilter} onChange={e => { setSuppFilter(e.target.value); setPage(0); refresh() }}>
               <option value="">All suppliers</option>
               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="pr-filter-group">
+            <label className="pr-filter-label">Bill Type</label>
+            <select
+              className="pr-filter-select"
+              value={billTypeFilter}
+              onChange={e => { setBillTypeFilter(e.target.value); setPage(0); refresh() }}
+            >
+              <option value="all">All Entries</option>
+              <option value="regular">Regular Bills only</option>
+              <option value="missed">Missed Bills (छूट बिल) only</option>
             </select>
           </div>
           <div className="pr-filter-group">
@@ -290,7 +327,7 @@ export default function PurchaseRegister({ theme, onToast }) {
             <input className="pr-filter-input" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); refresh() }} />
           </div>
           {hasFilters && (
-            <button className="pr-filter-clear" onClick={() => { setSearch(''); setSuppFilter(''); setDateFrom(''); setDateTo(''); setPage(0); refresh() }}>
+            <button className="pr-filter-clear" onClick={() => { setSearch(''); setSuppFilter(''); setBillTypeFilter('all'); setDateFrom(''); setDateTo(''); setPage(0); refresh() }}>
               Clear all filters
             </button>
           )}
@@ -321,7 +358,14 @@ export default function PurchaseRegister({ theme, onToast }) {
             {!loading && entries.length === 0 && <EmptyState hasFilters={hasFilters} onAdd={() => { setEditEntry(null); setShowForm(true) }} />}
             {!loading && entries.map(entry => (
               <tr key={entry.id} className="pr-row pr-row-clickable" onClick={() => setSelectedEntry(entry)}>
-                <td className="pr-td-bold">{entry.invoice_no}</td>
+                <td className="pr-td-bold">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{entry.invoice_no}</span>
+                    {entry.is_missed_bill && (
+                      <span className="pr-missed-tag" title="Missed / Late Purchase Bill (छूट खरिद बिल)">छूट बिल</span>
+                    )}
+                  </div>
+                </td>
                 <td className="pr-td-muted">{entry.date_bs || adToBs(entry.date_ad) || '—'}</td>
                 <td className="pr-td-muted">{fmtDate(entry.date_ad)}</td>
                 <td>
@@ -363,7 +407,10 @@ export default function PurchaseRegister({ theme, onToast }) {
           <div key={entry.id} className="pr-mobile-card" onClick={() => setSelectedEntry(entry)}>
             <div className="pr-mobile-card-header">
               <div>
-                <span className="pr-mobile-card-inv">{entry.invoice_no}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="pr-mobile-card-inv">{entry.invoice_no}</span>
+                  {entry.is_missed_bill && <span className="pr-missed-tag">छूट बिल</span>}
+                </div>
                 <div className="pr-mobile-card-date">{entry.date_bs || adToBs(entry.date_ad) || '—'}</div>
               </div>
               <PayStatusBadge status={entry.paid_status} />

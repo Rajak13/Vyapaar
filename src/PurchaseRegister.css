@@ -146,6 +146,58 @@
 }
 .pr-search-clear:hover { color: var(--df); }
 
+/* ── Bill Type Filter Pills ── */
+.pr-type-pills {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: -2px;
+}
+
+.pr-type-pill {
+  background: var(--dc);
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pr-type-pill:hover {
+  color: var(--df);
+  border-color: var(--df);
+}
+.pr-type-pill.active {
+  background: #ab2f00;
+  border-color: #ab2f00;
+  color: #ffffff;
+}
+.pr-type-pill-missed.active {
+  background: #eb5e28;
+  border-color: #eb5e28;
+  color: #ffffff;
+}
+
+/* ── Missed Bill Tag / Badge ── */
+.pr-missed-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: rgba(235, 94, 40, 0.15);
+  border: 1px solid rgba(235, 94, 40, 0.35);
+  color: #eb5e28;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 /* ── Filters row ── */
 .pr-filters {
   display: flex;

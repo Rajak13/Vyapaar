@@ -83,7 +83,33 @@ router.post('/supplier-payments', async (req, res) => {
     return res.status(400).json({ error: 'Cheque number is required for cheque payments.' })
   }
 
+  const suppId = parseInt(supplier_id, 10)
+  const peId   = purchase_entry_id ? parseInt(purchase_entry_id, 10) : null
+
   try {
+    // 1. Verify supplier belongs to user
+    const { rows: suppCheck } = await pool.query(
+      `SELECT id FROM suppliers WHERE id = $1 AND user_id = $2`,
+      [suppId, req.user.id]
+    )
+    if (suppCheck.length === 0) {
+      return res.status(400).json({ error: 'Supplier not found or does not belong to your account.' })
+    }
+
+    // 2. If purchase_entry_id is given, verify it belongs to user AND this supplier
+    if (peId) {
+      const { rows: peCheck } = await pool.query(
+        `SELECT id, supplier_id FROM purchase_entries WHERE id = $1 AND user_id = $2`,
+        [peId, req.user.id]
+      )
+      if (peCheck.length === 0) {
+        return res.status(400).json({ error: 'Purchase entry not found or does not belong to your account.' })
+      }
+      if (peCheck[0].supplier_id !== suppId) {
+        return res.status(400).json({ error: 'The selected invoice does not belong to this supplier.' })
+      }
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO supplier_payments
          (supplier_id, purchase_entry_id, date_bs, date_ad,
@@ -91,8 +117,8 @@ router.post('/supplier-payments', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
-        parseInt(supplier_id, 10),
-        purchase_entry_id ? parseInt(purchase_entry_id, 10) : null,
+        suppId,
+        peId,
         date_bs, date_ad, amt, payment_method,
         reference_no?.trim() || null, notes?.trim() || null,
         req.user.id,

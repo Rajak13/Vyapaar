@@ -100,6 +100,26 @@ function PurchaseInvoiceDoc({ entry }) {
         )}
       </div>
 
+      {entry.is_missed_bill && (
+        <div style={{
+          background: 'rgba(235, 94, 40, 0.08)',
+          border: '1px solid rgba(235, 94, 40, 0.3)',
+          borderRadius: 8,
+          padding: '9px 13px',
+          marginBottom: 14,
+          fontSize: 12,
+          color: '#eb5e28',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}>
+          <div style={{ fontWeight: 700 }}>⚠️ Missed / Late Purchase Bill (छूट खरिद बिल)</div>
+          <div style={{ fontSize: 11, color: '#555' }}>
+            Original invoice date retained. Input tax claimed in current filing without altering historical closed returns.
+          </div>
+        </div>
+      )}
+
       {/* Tax breakdown table */}
       <div className="inv-breakdown-label">TAX BREAKDOWN</div>
       <div className="inv-breakdown-table">

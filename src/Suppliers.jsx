@@ -368,8 +368,9 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
               <th>Supplier Name</th>
               <th>PAN</th>
               <th>Phone</th>
-              <th className="sup-col-num">Total Purchased</th>
-              <th className="sup-col-num">Total Paid</th>
+              <th className="sup-col-num">Opening Bal.</th>
+              <th className="sup-col-num">Purchased</th>
+              <th className="sup-col-num">Paid</th>
               <th className="sup-col-num">Balance Due</th>
               <th>Status</th>
               <th className="sup-col-actions"></th>
@@ -380,7 +381,7 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
 
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="sup-empty">
+                <td colSpan={9} className="sup-empty">
                   <div className="sup-empty-inner">
                     <p className="sup-empty-title">{search ? 'No suppliers match your search' : 'No suppliers yet'}</p>
                     <p className="sup-empty-body">{search ? 'Try a different name or PAN.' : 'Add your first supplier to get started.'}</p>
@@ -407,6 +408,7 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
                 </td>
                 <td className="sup-td-mono">{s.supplier_pan || '—'}</td>
                 <td className="sup-td-muted">{s.phone || '—'}</td>
+                <td className="sup-col-num sup-td-muted">{parseFloat(s.opening_balance) > 0 ? fmtRs(s.opening_balance) : '—'}</td>
                 <td className="sup-col-num sup-td-muted">{fmtRs(s.total_purchased)}</td>
                 <td className="sup-col-num sup-td-muted">{fmtRs(s.total_paid)}</td>
                 <td className={`sup-col-num${parseFloat(s.balance_due) > 0 ? ' sup-td-due' : ' sup-td-muted'}`}>
@@ -459,7 +461,7 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
                 </span>
               </div>
               <div>
-                <span className="sup-mobile-card-label">Total Purchased / Paid</span>
+                <span className="sup-mobile-card-label">Purchased / Paid {parseFloat(s.opening_balance) > 0 ? `(Op. Bal: ${fmtRs(s.opening_balance)})` : ''}</span>
                 <span className="sup-mobile-card-sub">{fmtRs(s.total_purchased)} / {fmtRs(s.total_paid)}</span>
               </div>
             </div>

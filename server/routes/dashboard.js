@@ -17,7 +17,7 @@ router.get('/dashboard/charts', async (req, res) => {
     const [monthlyRes, accountHeadRes, paymentMethodRes, topSuppliersRes, paidStatusRes] =
       await Promise.all([
 
-        // 1. Monthly purchase + tax trend — last 8 months
+        // 1. Monthly purchase + tax trend — last 8 months (regular bills only, so missed bills don't distort closed months)
         pool.query(
           `SELECT
              TO_CHAR(DATE_TRUNC('month', date_ad), 'YYYY-MM') AS month,
@@ -28,6 +28,7 @@ router.get('/dashboard/charts', async (req, res) => {
            FROM purchase_entries
            WHERE user_id = $1
              AND date_ad >= DATE_TRUNC('month', NOW()) - INTERVAL '7 months'
+             AND is_missed_bill = false
            GROUP BY 1, 2
            ORDER BY 1 ASC`,
           [userId]
@@ -100,6 +101,17 @@ router.get('/dashboard/charts', async (req, res) => {
            GROUP BY 1`,
           [userId]
         ),
+
+        // 6. Missed bills summary
+        pool.query(
+          `SELECT
+             COUNT(*)::int                        AS count,
+             COALESCE(SUM(grand_total), 0)::float AS total_purchased,
+             COALESCE(SUM(tax_amount),  0)::float AS total_tax
+           FROM purchase_entries
+           WHERE user_id = $1 AND is_missed_bill = true`,
+          [userId]
+        ),
       ])
 
     return res.json({
@@ -108,6 +120,7 @@ router.get('/dashboard/charts', async (req, res) => {
       paymentMethods: paymentMethodRes.rows,
       topSuppliers:  topSuppliersRes.rows,
       paidStatus:    paidStatusRes.rows,
+      missedSummary: missedSummaryRes.rows[0] ?? { count: 0, total_purchased: 0, total_tax: 0 },
     })
   } catch (err) {
     console.error('[GET /api/dashboard/charts]', err)
