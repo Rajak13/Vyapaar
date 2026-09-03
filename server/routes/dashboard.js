@@ -14,7 +14,7 @@ router.get('/dashboard/charts', async (req, res) => {
   const userId = req.user.id
 
   try {
-    const [monthlyRes, accountHeadRes, paymentMethodRes, topSuppliersRes, paidStatusRes] =
+    const [monthlyRes, accountHeadRes, paymentMethodRes, topSuppliersRes, paidStatusRes, missedSummaryRes] =
       await Promise.all([
 
         // 1. Monthly purchase + tax trend — last 8 months (regular bills only, so missed bills don't distort closed months)
