@@ -39,3 +39,21 @@ body {
   --fg-muted: var(--brown);
   --panel: var(--taupe);
 }
+
+/* ── Prevent mobile browser (iOS Safari) auto-zoom on input focus ── */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .pef-input,
+  .sup-input,
+  .pay-input,
+  .pay-select,
+  .auth-input,
+  .pr-filter-input,
+  .pr-filter-select,
+  .dash-search-input {
+    font-size: 16px !important;
+  }
+}
+

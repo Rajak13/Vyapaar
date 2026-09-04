@@ -489,6 +489,7 @@
   .sup-overlay        { z-index: 2000; align-items: flex-end; justify-content: center; bottom: 0; }
   .sup-panel          { max-width: 100%; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; height: auto; max-height: 88vh; padding-bottom: 48px; animation-name: sup-slide-up; }
   @keyframes sup-slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .sup-input          { font-size: 16px; }
 
   /* Extra bottom breathing room so FAB doesn't cover last row */
   .sup-page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }

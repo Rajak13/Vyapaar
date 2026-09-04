@@ -467,4 +467,9 @@
   .pef-row {
     grid-template-columns: 1fr;
   }
+
+  .pef-input {
+    font-size: 16px;
+  }
 }
+

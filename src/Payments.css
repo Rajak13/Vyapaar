@@ -424,6 +424,7 @@
   .pay-panel { max-width: auto; height: auto; max-height: 80vh; border-left: none; border-top: 1px solid rgba(204,197,185,0.1); border-radius: 20px 20px 0 0; padding: 28px 24px; animation-name: pay-slide-up; }
   @keyframes pay-slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .pay-form .pay-row { grid-template-columns: 1fr; }
+  .pay-input, .pay-select { font-size: 16px; }
   .pay-toolbar { flex-direction: column; }
   .pay-search-wrap, .pay-filter-select { width: auto; }
 }

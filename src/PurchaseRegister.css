@@ -465,7 +465,7 @@
   /* Filters wrap cleanly */
   .pr-filters { flex-direction: column; gap: 10px; padding: 14px 16px; }
   .pr-filter-group { width: 100%; }
-  .pr-filter-select, .pr-filter-input { width: 100%; min-width: unset; box-sizing: border-box; }
+  .pr-filter-select, .pr-filter-input, .pr-search-input { width: 100%; min-width: unset; box-sizing: border-box; font-size: 16px; }
   .pr-filter-clear { align-self: flex-start; }
 
   .pr-table-wrap { display: none; }

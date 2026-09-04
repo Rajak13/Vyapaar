@@ -262,6 +262,10 @@
     from { transform: translateY(100%); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
   }
+
+  .auth-input {
+    font-size: 16px;
+  }
 }
 
 /* ── Terms consent row ───────────────────────────────────────────────────── */
