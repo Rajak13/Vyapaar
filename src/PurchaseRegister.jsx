@@ -42,9 +42,6 @@ function EditIcon() {
 function FilterIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
 }
-function DownloadIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-}
 function DeleteIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 }
@@ -234,75 +231,6 @@ export default function PurchaseRegister({ theme, onToast }) {
     setPage(0)
   }
 
-  // Full unpaginated CSV export with summary totals row
-  async function exportCSV() {
-    setIsExporting(true)
-    try {
-      const res = await fetchEntries(getExportFilterParams())
-      const allEntries = res.entries ?? []
-      if (allEntries.length === 0) {
-        if (onToast) onToast('No entries found to export.', 'error')
-        return
-      }
-      const summary = res.totals ?? {}
-
-      const headers = [
-        'Invoice No.', 'Date (BS)', 'Date (AD)', 'Supplier Name', 'Supplier PAN',
-        'Account Head', 'Tax-Exempt (Rs.)', 'Taxable Purchases (Rs.)',
-        'Taxable Imports (Rs.)', 'Capital Taxable (Rs.)', '13% VAT (Rs.)',
-        'Total Value (Rs.)', 'Grand Total (Rs.)', 'Missed Bill (छूट)', 'Status', 'Notes'
-      ]
-
-      const rows = allEntries.map(e => [
-        e.invoice_no,
-        e.date_bs || '',
-        fmtDate(e.date_ad),
-        e.supplier_name || '',
-        e.supplier_pan ? `\t${e.supplier_pan}` : '',
-        e.account_head ?? '',
-        Number(e.tax_exempt_purchases || 0).toFixed(2),
-        Number(e.taxable_purchases || 0).toFixed(2),
-        Number(e.taxable_imports || 0).toFixed(2),
-        Number(e.capital_taxable_purchases || 0).toFixed(2),
-        Number(e.tax_amount || 0).toFixed(2),
-        Number(e.total_value || 0).toFixed(2),
-        Number(e.grand_total || 0).toFixed(2),
-        e.is_missed_bill ? 'YES' : 'NO',
-        (e.paid_status || 'pending').toUpperCase(),
-        e.notes ?? ''
-      ])
-
-      const totalsRow = [
-        `TOTAL (${allEntries.length} Invoices)`, '', '', '', '', '',
-        Number(summary.tax_exempt_purchases || 0).toFixed(2),
-        Number(summary.taxable_purchases || 0).toFixed(2),
-        Number(summary.taxable_imports || 0).toFixed(2),
-        Number(summary.capital_taxable_purchases || 0).toFixed(2),
-        Number(summary.tax_amount || 0).toFixed(2),
-        Number(summary.total_value || 0).toFixed(2),
-        Number(summary.grand_total || 0).toFixed(2),
-        '', '', ''
-      ]
-
-      const csv = '\uFEFF' + [headers, ...rows, totalsRow]
-        .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-        .join('\n')
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href = url
-      a.download = `purchase-register-${new Date().toISOString().slice(0, 10)}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
-      if (onToast) onToast(`Exported all ${allEntries.length} entries to CSV.`, 'success')
-    } catch (err) {
-      console.error(err)
-      if (onToast) onToast('Failed to export CSV: ' + err.message, 'error')
-    } finally {
-      setIsExporting(false)
-    }
-  }
 
   // Full unpaginated Excel export with colors, dynamic column widths, and proper number formatting
   async function exportExcel() {
@@ -373,10 +301,6 @@ export default function PurchaseRegister({ theme, onToast }) {
           <button className="pr-btn-ghost pr-btn-ghost--excel" onClick={exportExcel} disabled={entries.length === 0 || isExporting} title="Export styled Excel spreadsheet with colors & auto-fit columns">
             <SheetIcon />
             <span>{isExporting ? 'Exporting…' : 'Export Excel'}</span>
-          </button>
-          <button className="pr-btn-ghost" onClick={exportCSV} disabled={entries.length === 0 || isExporting} title="Export CSV">
-            <DownloadIcon />
-            <span>{isExporting ? 'Exporting…' : 'CSV'}</span>
           </button>
           <button className="pr-btn-ghost" onClick={exportPDF} disabled={entries.length === 0 || isExporting} title="Export VAT Purchase Register PDF (खरिद खाता)">
             <PdfIcon />
@@ -510,9 +434,6 @@ export default function PurchaseRegister({ theme, onToast }) {
               <button type="button" className="pr-btn-export-outline pr-btn-export-outline--excel" onClick={exportExcel} disabled={isExporting || total === 0} title="Export styled Excel (.xls)">
                 <SheetIcon /> {isExporting ? 'Exporting…' : 'Export Excel'}
               </button>
-              <button type="button" className="pr-btn-export-outline" onClick={exportCSV} disabled={isExporting || total === 0} title="Export raw CSV">
-                <DownloadIcon /> {isExporting ? 'Exporting…' : 'CSV'}
-              </button>
               <button type="button" className="pr-btn-export-outline" onClick={exportPDF} disabled={isExporting || total === 0} title="Export VAT Register PDF">
                 <PdfIcon /> {isExporting ? 'Exporting…' : 'PDF (खरिद खाता)'}
               </button>
@@ -556,16 +477,6 @@ export default function PurchaseRegister({ theme, onToast }) {
               >
                 <PdfIcon />
                 <span>{isExporting ? 'Exporting…' : 'PDF'}</span>
-              </button>
-              <button
-                type="button"
-                className="pr-btn-mini-export"
-                onClick={exportCSV}
-                disabled={isExporting}
-                title="Download CSV"
-              >
-                <DownloadIcon />
-                <span>{isExporting ? 'Exporting…' : 'CSV'}</span>
               </button>
             </div>
           </div>
