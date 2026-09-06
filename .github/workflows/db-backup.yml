@@ -28,20 +28,37 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL Client
+      - name: Install PostgreSQL 17 Client
         run: |
+          sudo install -d /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
 
       - name: Execute pg_dump and Compress
         id: dump
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          set -e -o pipefail
           BACKUP_DATE=$(date +'%Y-%m-%d_%H%M%S')
           mkdir -p backups_temp
-          echo "Dumping PostgreSQL schema and data..."
-          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner --no-privileges | gzip > "backups_temp/vyapaar-db-${BACKUP_DATE}.sql.gz"
+          
+          # Clean URL: strip quotes and replace "-pooler." with "." for direct compute connection required by pg_dump
+          CLEAN_URL=$(echo "$DATABASE_URL" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" -e 's/-pooler\././')
+          
+          echo "Dumping PostgreSQL 17 database from direct endpoint..."
+          pg_dump "$CLEAN_URL" --clean --if-exists --no-owner --no-privileges | gzip > "backups_temp/vyapaar-db-${BACKUP_DATE}.sql.gz"
+          
+          DUMP_SIZE=$(stat -c%s "backups_temp/vyapaar-db-${BACKUP_DATE}.sql.gz")
+          echo "Compressed backup created: ${DUMP_SIZE} bytes"
+          if [ "$DUMP_SIZE" -lt 100 ]; then
+            echo "::error::Backup file is suspiciously small (${DUMP_SIZE} bytes). Dump may have failed."
+            exit 1
+          fi
+          
           echo "backup_file=vyapaar-db-${BACKUP_DATE}.sql.gz" >> $GITHUB_OUTPUT
           echo "backup_date=${BACKUP_DATE}" >> $GITHUB_OUTPUT
           ls -lh backups_temp/
