@@ -1,0 +1,255 @@
+/* ── Nepali Calendar Popover Overlay ── */
+.nepali-calendar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: nepali-fade-in 0.18s ease-out;
+}
+
+@keyframes nepali-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.nepali-calendar-popover {
+  width: 100%;
+  max-width: 350px;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  user-select: none;
+  animation: nepali-scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes nepali-scale-up {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Dark Mode Colors ── */
+.cal-dark .nepali-calendar-popover {
+  background: #252422;
+  border: 1px solid rgba(204, 197, 185, 0.15);
+  color: #fffcf2;
+}
+
+/* ── Light Mode Colors ── */
+.cal-light .nepali-calendar-popover {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1a1917;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Header Navigation ── */
+.nepali-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nepali-cal-selectors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.nepali-cal-select {
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.cal-dark .nepali-cal-select {
+  background: #1a1917;
+  color: #fffcf2;
+  border-color: rgba(204, 197, 185, 0.2);
+}
+
+.cal-light .nepali-cal-select {
+  background: #f4f2ee;
+  color: #1a1917;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.nepali-cal-select-year {
+  max-width: 110px;
+}
+
+.nepali-cal-btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cal-dark .nepali-cal-btn-icon {
+  background: rgba(204, 197, 185, 0.1);
+  color: #fffcf2;
+}
+.cal-dark .nepali-cal-btn-icon:hover {
+  background: rgba(204, 197, 185, 0.2);
+}
+
+.cal-light .nepali-cal-btn-icon {
+  background: #f0ede8;
+  color: #1a1917;
+}
+.cal-light .nepali-cal-btn-icon:hover {
+  background: #e5e0d8;
+}
+
+/* ── Weekday Labels ── */
+.nepali-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.nepali-cal-weekday {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 0;
+  color: #8c8070;
+}
+
+.nepali-cal-weekday.saturday {
+  color: #eb5e28;
+}
+
+/* ── Calendar Grid ── */
+.nepali-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.nepali-cal-day {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+}
+
+.nepali-cal-day:hover:not(.empty):not(.selected) {
+  transform: scale(1.08);
+}
+
+.cal-dark .nepali-cal-day {
+  background: transparent;
+  color: #ccc5b9;
+}
+.cal-dark .nepali-cal-day:hover:not(.empty):not(.selected) {
+  background: rgba(204, 197, 185, 0.15);
+  color: #fffcf2;
+}
+
+.cal-light .nepali-cal-day {
+  background: transparent;
+  color: #2b2927;
+}
+.cal-light .nepali-cal-day:hover:not(.empty):not(.selected) {
+  background: #eae6de;
+  color: #1a1917;
+}
+
+.nepali-cal-day.saturday {
+  color: #eb5e28;
+}
+
+.nepali-cal-day.today {
+  border: 1.5px solid #eb5e28;
+  font-weight: 700;
+}
+
+.nepali-cal-day.selected {
+  background: #eb5e28 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(235, 94, 40, 0.4);
+}
+
+.nepali-cal-day.empty {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* ── Footer ── */
+.nepali-cal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(204, 197, 185, 0.15);
+  gap: 8px;
+}
+
+.cal-light .nepali-cal-footer {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.nepali-cal-today-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #eb5e28;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.nepali-cal-today-btn:hover {
+  text-decoration: underline;
+}
+
+.nepali-cal-close-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-dark .nepali-cal-close-btn {
+  background: rgba(204, 197, 185, 0.15);
+  color: #fffcf2;
+}
+
+.cal-light .nepali-cal-close-btn {
+  background: #f0ede8;
+  color: #1a1917;
+}

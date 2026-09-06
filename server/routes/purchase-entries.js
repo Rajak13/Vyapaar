@@ -210,8 +210,10 @@ router.get('/purchase-entries/stats', async (req, res) => {
 
 // GET /api/purchase-entries — paginated list with optional filters (user-scoped)
 router.get('/purchase-entries', async (req, res) => {
-  const limit  = Math.min(parseInt(req.query.limit  ?? '20', 10), 100)
-  const offset = parseInt(req.query.offset ?? '0', 10)
+  const reqLimit = req.query.limit
+  const isAll = reqLimit === 'all' || reqLimit === 'export'
+  const limit  = isAll ? 10000 : Math.min(parseInt(reqLimit ?? '20', 10), 10000)
+  const offset = isAll ? 0 : parseInt(req.query.offset ?? '0', 10)
   const { supplier_id, fiscal_period_id, search, date_from, date_to, sort_by, is_missed_bill } = req.query
 
   let orderBy = 'ORDER BY pe.date_ad DESC, pe.id DESC'
@@ -303,16 +305,38 @@ router.get('/purchase-entries', async (req, res) => {
     )
 
     const countParams = params.slice(0, -2)
-    const { rows: countRows } = await pool.query(
-      `SELECT COUNT(*) FROM purchase_entries pe
+    const { rows: summaryRows } = await pool.query(
+      `SELECT
+         COUNT(*)::int                                                          AS count,
+         COALESCE(SUM(pe.grand_total), 0)::float                                AS grand_total,
+         COALESCE(SUM(pe.taxable_purchases), 0)::float                          AS taxable_purchases,
+         COALESCE(SUM(pe.tax_exempt_purchases), 0)::float                       AS tax_exempt_purchases,
+         COALESCE(SUM(pe.taxable_imports), 0)::float                            AS taxable_imports,
+         COALESCE(SUM(pe.capital_taxable_purchases), 0)::float                  AS capital_taxable_purchases,
+         COALESCE(SUM(pe.tax_amount), 0)::float                                 AS tax_amount,
+         COALESCE(SUM(pe.total_value), 0)::float                                AS total_value,
+         COALESCE(SUM(pe.grand_total - COALESCE(ped.paid_amount, 0)), 0)::float AS amount_due
+       FROM purchase_entries pe
        JOIN suppliers s ON s.id = pe.supplier_id
+       LEFT JOIN (
+         SELECT purchase_entry_id, SUM(amount) AS paid_amount
+         FROM supplier_payments
+         WHERE purchase_entry_id IS NOT NULL
+         GROUP BY purchase_entry_id
+       ) ped ON ped.purchase_entry_id = pe.id
        ${where}`,
       countParams
     )
 
+    const totals = summaryRows[0] || {
+      count: 0, grand_total: 0, taxable_purchases: 0, tax_exempt_purchases: 0,
+      taxable_imports: 0, capital_taxable_purchases: 0, tax_amount: 0, total_value: 0, amount_due: 0
+    }
+
     return res.json({
       entries: rows,
-      total:   parseInt(countRows[0].count, 10),
+      total:   totals.count,
+      totals,
       limit,
       offset,
     })

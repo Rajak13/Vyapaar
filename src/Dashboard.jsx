@@ -864,6 +864,7 @@ export default function Dashboard({ user: initialUser, theme, onThemeChange, onL
         <PurchaseEntryForm
           onClose={() => setShowEntryForm(false)}
           onSuccess={handleEntrySuccess}
+          theme={theme}
         />
       )}
     </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import './PurchaseEntryForm.css'
-import { adToBs } from './adToBs.js'
+import { adToBs, bsToAd } from './adToBs.js'
 import { getAuthHeaders } from './api.js'
+import NepaliDatePicker from './NepaliDatePicker.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -150,7 +151,7 @@ function SupplierSearch({ selected, onSelect, error }) {
 }
 
 // ── Main form ─────────────────────────────────────────────────────────────────
-export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
+export default function PurchaseEntryForm({ onClose, onSuccess, initialData, theme = 'dark' }) {
   const overlayRef = useRef(null)
   const isEdit = Boolean(initialData?.id)
 
@@ -159,6 +160,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
   const L = LABELS[lang]
 
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showNepaliCal, setShowNepaliCal] = useState(false)
 
   // Try restoring draft from localStorage if creating a new entry
   const savedDraft = (!isEdit && localStorage.getItem('vyapaaar_entry_draft'))
@@ -297,7 +299,7 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
   }
 
   return (
-    <div className="pef-overlay" ref={overlayRef} onClick={handleOverlay} role="dialog" aria-modal="true">
+    <div className={`pef-overlay app-${theme}`} ref={overlayRef} onClick={handleOverlay} role="dialog" aria-modal="true">
       <div className="pef-panel">
 
         <div className="pef-header">
@@ -343,21 +345,66 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData }) {
             <NumInput id="taxable" value={taxable} onChange={e => setTaxable(e.target.value)} error={errs.taxable} />
           </Field>
 
-          {/* Date row — AD auto-converts to BS */}
+          {/* Date row — AD and BS with two-way conversion and visual Nepali calendar picker */}
           <div className="pef-row">
             <Field label={L.date_ad} htmlFor="date_ad" error={errs.dateAd} required>
-              <input className={`pef-input${errs.dateAd ? ' pef-input-error' : ''}`} id="date_ad" type="date" value={dateAd} onChange={e => setDateAd(e.target.value)} />
-            </Field>
-            <Field label={L.date_bs} htmlFor="date_bs">
               <input
-                className="pef-input pef-input-readonly"
-                id="date_bs" type="text"
-                value={dateBs}
-                onChange={e => setDateBs(e.target.value)}
-                placeholder="Auto-filled BS date"
+                className={`pef-input${errs.dateAd ? ' pef-input-error' : ''}`}
+                id="date_ad"
+                type="date"
+                value={dateAd}
+                onChange={e => {
+                  const val = e.target.value
+                  setDateAd(val)
+                  if (val) {
+                    const bs = adToBs(val)
+                    if (bs) setDateBs(bs)
+                  }
+                }}
               />
             </Field>
+
+            <Field label={L.date_bs} htmlFor="date_bs">
+              <div className="pef-bs-date-wrap">
+                <input
+                  className="pef-input pef-input-bs"
+                  id="date_bs"
+                  type="text"
+                  value={dateBs}
+                  onChange={e => {
+                    const val = e.target.value
+                    setDateBs(val)
+                    if (val.length === 10) {
+                      const ad = bsToAd(val)
+                      if (ad) setDateAd(ad)
+                    }
+                  }}
+                  placeholder="YYYY-MM-DD (वि.सं.)"
+                />
+                <button
+                  type="button"
+                  className="pef-cal-trigger-btn"
+                  onClick={() => setShowNepaliCal(true)}
+                  title="Open Bikram Sambat Calendar"
+                >
+                  📅 पात्रो
+                </button>
+              </div>
+            </Field>
           </div>
+
+          {showNepaliCal && (
+            <NepaliDatePicker
+              value={dateBs}
+              theme={theme}
+              onChange={selectedBs => {
+                setDateBs(selectedBs)
+                const ad = bsToAd(selectedBs)
+                if (ad) setDateAd(ad)
+              }}
+              onClose={() => setShowNepaliCal(false)}
+            />
+          )}
 
           <div className="pef-tax-row">
             <Field label={L.tax_amount} htmlFor="tax_amount" error={errs.taxAmount}>

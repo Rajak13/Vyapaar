@@ -473,3 +473,111 @@
   }
 }
 
+/* ── BS Date input with calendar trigger ── */
+.pef-bs-date-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pef-bs-date-wrap .pef-input-bs {
+  padding-right: 90px;
+}
+.pef-cal-trigger-btn {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  background: rgba(235, 94, 40, 0.12);
+  border: 1px solid rgba(235, 94, 40, 0.4);
+  color: #eb5e28;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.pef-cal-trigger-btn:hover {
+  background: rgba(235, 94, 40, 0.22);
+}
+
+/* ════════════════════════════════════════════
+   LIGHT THEME SUPPORT
+════════════════════════════════════════════ */
+.app-light.pef-overlay {
+  background: rgba(37, 36, 34, 0.5);
+}
+.app-light .pef-panel {
+  background: #fffcf2;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  color: #252422;
+}
+.app-light .pef-title {
+  color: #252422;
+}
+.app-light .pef-close {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #403d39;
+}
+.app-light .pef-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #252422;
+}
+.app-light .pef-divider {
+  background: rgba(0, 0, 0, 0.1);
+}
+.app-light .pef-label {
+  color: #5c5549;
+}
+.app-light .pef-input {
+  color: #252422;
+  border-bottom-color: rgba(0, 0, 0, 0.2);
+}
+.app-light .pef-input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+.app-light .pef-input:focus {
+  border-bottom-color: #eb5e28;
+}
+.app-light .pef-dropdown {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+.app-light .pef-dropdown-item {
+  color: #252422;
+}
+.app-light .pef-dropdown-item:hover {
+  background: #f4f0ea;
+}
+.app-light .pef-dropdown-meta {
+  color: #7a7366;
+}
+.app-light .pef-totals {
+  background: #f4f0ea;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+.app-light .pef-total-row {
+  color: #5c5549;
+}
+.app-light .pef-total-grand {
+  color: #252422;
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+.app-light .pef-submit {
+  border-top-color: rgba(0, 0, 0, 0.15);
+  color: #252422;
+}
+.app-light .pef-submit:hover:not(:disabled) {
+  color: #eb5e28;
+}
+@media (max-width: 768px) {
+  .app-light .pef-panel {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+}
+
+

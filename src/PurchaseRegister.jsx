@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Q, fetchSupplierList, fetchEntries, getAuthHeaders } from './api'
+import { Q, fetchSupplierList, fetchEntries, fetchBusinessProfile, getAuthHeaders } from './api'
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
+import { exportPurchaseRegisterPDF } from './exportPdf.js'
 import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -46,6 +47,9 @@ function DownloadIcon() {
 }
 function DeleteIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+}
+function PdfIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
 }
 
 // ── Paid status badge ─────────────────────────────────────────────────────────
@@ -134,9 +138,15 @@ export default function PurchaseRegister({ theme, onToast }) {
   if (sortBy)                   params.set('sort_by',     sortBy)
   const paramsStr = params.toString()
 
+  const [isExporting, setIsExporting] = useState(false)
+
   // Supplier list (pre-fetched by Dashboard)
   const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
   const suppliers = suppData?.suppliers ?? []
+
+  // Business profile for PDF export
+  const { data: profileData } = useQuery({ queryKey: Q.businessProfile(), queryFn: fetchBusinessProfile })
+  const profile = profileData?.profile ?? {}
 
   // Entries list — keepPreviousData keeps page N visible while page N+1 loads
   const { data: entriesData, isLoading: loading, isFetching, error: queryError } = useQuery({
@@ -146,6 +156,7 @@ export default function PurchaseRegister({ theme, onToast }) {
   })
   const entries    = entriesData?.entries ?? []
   const total      = entriesData?.total   ?? 0
+  const totals     = entriesData?.totals  ?? null
   const error      = queryError?.message  ?? ''
   const isRefreshing = isFetching && !loading   // background refresh, data already present
 
@@ -187,22 +198,132 @@ export default function PurchaseRegister({ theme, onToast }) {
       })
   }
 
-  // CSV export
-  function exportCSV() {
-    if (entries.length === 0) return
-    const headers = ['Invoice No.', 'Date (BS)', 'Date (AD)', 'Supplier', 'PAN', 'Account Head',
-      'Tax Exempt', 'Taxable Purchases', 'Taxable Imports', 'Capital Taxable', 'Tax Amount', 'Total Value', 'Grand Total', 'Notes']
-    const rows = entries.map(e => [
-      e.invoice_no, e.date_bs, fmtDate(e.date_ad), e.supplier_name, e.supplier_pan ?? '',
-      e.account_head ?? '', e.tax_exempt_purchases, e.taxable_purchases, e.taxable_imports,
-      e.capital_taxable_purchases, e.tax_amount, e.total_value, e.grand_total, e.notes ?? ''
-    ])
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = `purchase-register-${new Date().toISOString().slice(0,10)}.csv`
-    a.click(); URL.revokeObjectURL(url)
+  // Helper to get unpaginated filter query for exports
+  function getExportFilterParams() {
+    const p = new URLSearchParams()
+    if (suppFilter)               p.set('supplier_id', suppFilter)
+    if (dateFrom)                 p.set('date_from',   dateFrom)
+    if (dateTo)                   p.set('date_to',     dateTo)
+    if (billTypeFilter === 'regular') p.set('is_missed_bill', 'false')
+    if (billTypeFilter === 'missed')  p.set('is_missed_bill', 'true')
+    if (debouncedSearch.trim())   p.set('search',      debouncedSearch.trim())
+    if (sortBy)                   p.set('sort_by',     sortBy)
+    p.set('limit', 'all')
+    return p.toString()
+  }
+
+  // Quick date presets
+  function setDatePreset(preset) {
+    const today = new Date()
+    if (preset === 'this_month') {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1)
+      setDateFrom(first.toISOString().slice(0, 10))
+      setDateTo(today.toISOString().slice(0, 10))
+    } else if (preset === 'last_month') {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+      const last  = new Date(today.getFullYear(), today.getMonth(), 0)
+      setDateFrom(first.toISOString().slice(0, 10))
+      setDateTo(last.toISOString().slice(0, 10))
+    } else if (preset === 'clear') {
+      setDateFrom('')
+      setDateTo('')
+    }
+    setPage(0)
+  }
+
+  // Full unpaginated CSV export with summary totals row
+  async function exportCSV() {
+    setIsExporting(true)
+    try {
+      const res = await fetchEntries(getExportFilterParams())
+      const allEntries = res.entries ?? []
+      if (allEntries.length === 0) {
+        if (onToast) onToast('No entries found to export.', 'error')
+        return
+      }
+      const summary = res.totals ?? {}
+
+      const headers = [
+        'Invoice No.', 'Date (BS)', 'Date (AD)', 'Supplier Name', 'Supplier PAN',
+        'Account Head', 'Tax-Exempt (Rs.)', 'Taxable Purchases (Rs.)',
+        'Taxable Imports (Rs.)', 'Capital Taxable (Rs.)', '13% VAT (Rs.)',
+        'Total Value (Rs.)', 'Grand Total (Rs.)', 'Missed Bill (छूट)', 'Status', 'Notes'
+      ]
+
+      const rows = allEntries.map(e => [
+        e.invoice_no,
+        e.date_bs || '',
+        fmtDate(e.date_ad),
+        e.supplier_name || '',
+        e.supplier_pan ?? '',
+        e.account_head ?? '',
+        Number(e.tax_exempt_purchases || 0).toFixed(2),
+        Number(e.taxable_purchases || 0).toFixed(2),
+        Number(e.taxable_imports || 0).toFixed(2),
+        Number(e.capital_taxable_purchases || 0).toFixed(2),
+        Number(e.tax_amount || 0).toFixed(2),
+        Number(e.total_value || 0).toFixed(2),
+        Number(e.grand_total || 0).toFixed(2),
+        e.is_missed_bill ? 'YES' : 'NO',
+        (e.paid_status || 'pending').toUpperCase(),
+        e.notes ?? ''
+      ])
+
+      const totalsRow = [
+        `TOTAL (${allEntries.length} Invoices)`, '', '', '', '', '',
+        Number(summary.tax_exempt_purchases || 0).toFixed(2),
+        Number(summary.taxable_purchases || 0).toFixed(2),
+        Number(summary.taxable_imports || 0).toFixed(2),
+        Number(summary.capital_taxable_purchases || 0).toFixed(2),
+        Number(summary.tax_amount || 0).toFixed(2),
+        Number(summary.total_value || 0).toFixed(2),
+        Number(summary.grand_total || 0).toFixed(2),
+        '', '', ''
+      ]
+
+      const csv = '\uFEFF' + [headers, ...rows, totalsRow]
+        .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url
+      a.download = `purchase-register-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      if (onToast) onToast(`Exported all ${allEntries.length} entries to CSV.`, 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Failed to export CSV: ' + err.message, 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Full unpaginated PDF export
+  async function exportPDF() {
+    setIsExporting(true)
+    try {
+      const res = await fetchEntries(getExportFilterParams())
+      const allEntries = res.entries ?? []
+      if (allEntries.length === 0) {
+        if (onToast) onToast('No entries found to export.', 'error')
+        return
+      }
+      exportPurchaseRegisterPDF({
+        entries: allEntries,
+        totals: res.totals ?? {},
+        filters: { dateFrom, dateTo, suppFilter, billTypeFilter, search },
+        profile: profile
+      })
+      if (onToast) onToast(`Opened PDF for ${allEntries.length} entries.`, 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Failed to export PDF: ' + err.message, 'error')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
@@ -220,9 +341,13 @@ export default function PurchaseRegister({ theme, onToast }) {
             <FilterIcon />
             <span>Filters{hasFilters ? ' •' : ''}</span>
           </button>
-          <button className="pr-btn-ghost" onClick={exportCSV} disabled={entries.length === 0}>
+          <button className="pr-btn-ghost" onClick={exportCSV} disabled={entries.length === 0 || isExporting}>
             <DownloadIcon />
-            <span>Export CSV</span>
+            <span>{isExporting ? 'Exporting…' : 'Export CSV'}</span>
+          </button>
+          <button className="pr-btn-ghost" onClick={exportPDF} disabled={entries.length === 0 || isExporting}>
+            <PdfIcon />
+            <span>{isExporting ? 'Exporting…' : 'Export PDF'}</span>
           </button>
           <button className="pr-btn-primary" onClick={() => { setEditEntry(null); setShowForm(true) }}>
             <PlusIcon />
@@ -299,42 +424,132 @@ export default function PurchaseRegister({ theme, onToast }) {
 
       {showFilters && (
         <div className="pr-filters">
-          <div className="pr-filter-group">
-            <label className="pr-filter-label">Supplier</label>
-            <select className="pr-filter-select" value={suppFilter} onChange={e => { setSuppFilter(e.target.value); setPage(0); refresh() }}>
-              <option value="">All suppliers</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-          <div className="pr-filter-group">
-            <label className="pr-filter-label">Bill Type</label>
-            <select
-              className="pr-filter-select"
-              value={billTypeFilter}
-              onChange={e => { setBillTypeFilter(e.target.value); setPage(0); refresh() }}
-            >
-              <option value="all">All Entries</option>
-              <option value="regular">Regular Bills only</option>
-              <option value="missed">Missed Bills (छूट बिल) only</option>
-            </select>
-          </div>
-          <div className="pr-filter-group">
-            <label className="pr-filter-label">Date from</label>
-            <input className="pr-filter-input" type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); refresh() }} />
-          </div>
-          <div className="pr-filter-group">
-            <label className="pr-filter-label">Date to</label>
-            <input className="pr-filter-input" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); refresh() }} />
-          </div>
-          {hasFilters && (
-            <button className="pr-filter-clear" onClick={() => { setSearch(''); setSuppFilter(''); setBillTypeFilter('all'); setDateFrom(''); setDateTo(''); setPage(0); refresh() }}>
-              Clear all filters
+          <div className="pr-filter-presets">
+            <span className="pr-filter-preset-label">Quick Dates:</span>
+            <button type="button" className="pr-date-preset-btn" onClick={() => setDatePreset('this_month')}>
+              यस महिना (This Month)
             </button>
-          )}
+            <button type="button" className="pr-date-preset-btn" onClick={() => setDatePreset('last_month')}>
+              अघिल्लो महिना (Last Month)
+            </button>
+            {(dateFrom || dateTo) && (
+              <button type="button" className="pr-date-preset-btn pr-date-preset-btn--clear" onClick={() => setDatePreset('clear')}>
+                Clear Dates
+              </button>
+            )}
+          </div>
+          <div className="pr-filter-grid">
+            <div className="pr-filter-group">
+              <label className="pr-filter-label">Supplier</label>
+              <select className="pr-filter-select" value={suppFilter} onChange={e => { setSuppFilter(e.target.value); setPage(0); refresh() }}>
+                <option value="">All suppliers</option>
+                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="pr-filter-group">
+              <label className="pr-filter-label">Bill Type</label>
+              <select
+                className="pr-filter-select"
+                value={billTypeFilter}
+                onChange={e => { setBillTypeFilter(e.target.value); setPage(0); refresh() }}
+              >
+                <option value="all">All Entries</option>
+                <option value="regular">Regular Bills only</option>
+                <option value="missed">Missed Bills (छूट बिल) only</option>
+              </select>
+            </div>
+            <div className="pr-filter-group">
+              <label className="pr-filter-label">Date from</label>
+              <input className="pr-filter-input" type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); refresh() }} />
+            </div>
+            <div className="pr-filter-group">
+              <label className="pr-filter-label">Date to</label>
+              <input className="pr-filter-input" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); refresh() }} />
+            </div>
+          </div>
+          <div className="pr-filter-bottom-row">
+            {hasFilters && (
+              <button className="pr-filter-clear" onClick={() => { setSearch(''); setSuppFilter(''); setBillTypeFilter('all'); setDateFrom(''); setDateTo(''); setPage(0); refresh() }}>
+                Clear all filters
+              </button>
+            )}
+            <div className="pr-filter-export-group">
+              <button type="button" className="pr-btn-export-outline" onClick={exportPDF} disabled={isExporting || total === 0}>
+                <PdfIcon /> {isExporting ? 'Exporting…' : 'Export PDF'}
+              </button>
+              <button type="button" className="pr-btn-export-outline" onClick={exportCSV} disabled={isExporting || total === 0}>
+                <DownloadIcon /> {isExporting ? 'Exporting…' : 'Export CSV'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {error && <div className="pr-error-banner">{error}</div>}
+
+      {/* ── Live Billing Insights Summary Strip ── */}
+      {totals && Number(totals.count) > 0 && (
+        <div className="pr-totals-card">
+          <div className="pr-totals-head">
+            <div className="pr-totals-title-wrap">
+              <span className="pr-totals-badge">{hasFilters ? 'Filtered Totals' : 'Register Summary'}</span>
+              <span className="pr-totals-count">{totals.count} {totals.count === 1 ? 'bill' : 'bills'}</span>
+              {(dateFrom || dateTo) && (
+                <span className="pr-totals-period">
+                  ({dateFrom || 'Start'} → {dateTo || 'Today'})
+                </span>
+              )}
+            </div>
+            <div className="pr-totals-quick-actions">
+              <button
+                type="button"
+                className="pr-btn-mini-export"
+                onClick={exportPDF}
+                disabled={isExporting}
+                title="Download / Print VAT Purchase Register PDF"
+              >
+                <PdfIcon />
+                <span>{isExporting ? 'Exporting…' : 'PDF'}</span>
+              </button>
+              <button
+                type="button"
+                className="pr-btn-mini-export"
+                onClick={exportCSV}
+                disabled={isExporting}
+                title="Download full CSV"
+              >
+                <DownloadIcon />
+                <span>{isExporting ? 'Exporting…' : 'CSV'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="pr-totals-grid">
+            <div className="pr-stat-box pr-stat-box--grand">
+              <span className="pr-stat-label">Grand Total (जम्मा)</span>
+              <span className="pr-stat-val pr-stat-val--grand">{fmtRs(totals.grand_total)}</span>
+            </div>
+            <div className="pr-stat-box">
+              <span className="pr-stat-label">Taxable (करयोग्य)</span>
+              <span className="pr-stat-val">{fmtRs(totals.taxable_purchases)}</span>
+            </div>
+            <div className="pr-stat-box">
+              <span className="pr-stat-label">Tax-Free (कर छुट)</span>
+              <span className="pr-stat-val">{fmtRs(totals.tax_exempt_purchases)}</span>
+            </div>
+            <div className="pr-stat-box pr-stat-box--vat">
+              <span className="pr-stat-label">13% VAT (भ्याट)</span>
+              <span className="pr-stat-val pr-stat-val--vat">{fmtRs(totals.tax_amount)}</span>
+            </div>
+            {Number(totals.amount_due) > 0 && (
+              <div className="pr-stat-box pr-stat-box--due">
+                <span className="pr-stat-label">Due / Pending (बाँकी)</span>
+                <span className="pr-stat-val pr-stat-val--due">{fmtRs(totals.amount_due)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Table ── */}
       <div className={`pr-table-wrap${isRefreshing ? ' pr-table-wrap--refreshing' : ''}`}>
@@ -470,6 +685,7 @@ export default function PurchaseRegister({ theme, onToast }) {
       {showForm && (
         <PurchaseEntryForm
           initialData={editEntry}
+          theme={theme}
           onClose={() => { setShowForm(false); setEditEntry(null) }}
           onSuccess={handleEntrySuccess}
         />

@@ -60,3 +60,12 @@
 .toast-close:hover {
   opacity: 1;
 }
+
+@media (max-width: 768px) {
+  .toast {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 32px);
+    white-space: normal;
+    text-align: left;
+  }
+}
