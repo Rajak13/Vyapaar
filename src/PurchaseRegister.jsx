@@ -6,7 +6,6 @@ import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
 import { exportPurchaseRegisterPDF } from './exportPdf.js'
-import { exportPurchaseRegisterExcel } from './exportExcel.js'
 import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -315,13 +314,14 @@ export default function PurchaseRegister({ theme, onToast }) {
         if (onToast) onToast('No entries found to export.', 'error')
         return
       }
-      exportPurchaseRegisterExcel({
+      const { exportPurchaseRegisterExcel } = await import('./exportExcel.js')
+      await exportPurchaseRegisterExcel({
         entries: allEntries,
         totals: res.totals ?? {},
         filters: { dateFrom, dateTo, suppFilter, billTypeFilter, search },
         profile: profile
       })
-      if (onToast) onToast(`Exported all ${allEntries.length} entries to styled Excel (.xls).`, 'success')
+      if (onToast) onToast(`Exported all ${allEntries.length} entries to styled Excel (.xlsx).`, 'success')
     } catch (err) {
       console.error(err)
       if (onToast) onToast('Failed to export Excel: ' + err.message, 'error')
