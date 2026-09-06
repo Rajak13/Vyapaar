@@ -57,6 +57,16 @@
 .pr-btn-ghost:hover:not(:disabled) { background: var(--dash-panel-hover); color: var(--df); }
 .pr-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.pr-btn-ghost--excel {
+  color: #2e6930;
+  border-color: rgba(46, 105, 48, 0.35);
+}
+.pr-btn-ghost--excel:hover:not(:disabled) {
+  background: rgba(46, 105, 48, 0.08);
+  border-color: #2e6930;
+  color: #2e6930;
+}
+
 .pr-btn-primary {
   display: flex;
   align-items: center;
@@ -297,6 +307,16 @@
   color: #ab2f00;
 }
 
+.pr-btn-export-outline--excel {
+  color: #2e6930;
+  border-color: rgba(46, 105, 48, 0.35);
+}
+.pr-btn-export-outline--excel:hover:not(:disabled) {
+  background: rgba(46, 105, 48, 0.08);
+  border-color: #2e6930;
+  color: #2e6930;
+}
+
 .pr-btn-export-outline:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -433,6 +453,16 @@
 .pr-btn-mini-export:hover:not(:disabled) {
   border-color: #ab2f00;
   color: #ab2f00;
+}
+
+.pr-btn-mini-export--excel {
+  color: #2e6930;
+  border-color: rgba(46, 105, 48, 0.35);
+}
+.pr-btn-mini-export--excel:hover:not(:disabled) {
+  border-color: #2e6930;
+  color: #2e6930;
+  background: rgba(46, 105, 48, 0.08);
 }
 
 .pr-btn-mini-export:disabled {

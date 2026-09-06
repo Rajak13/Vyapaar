@@ -23,6 +23,15 @@ function UserIcon() {
 function TrashIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
 }
+function DatabaseIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+}
+function DownloadCloudIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
+}
+function UploadCloudIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+}
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -53,8 +62,15 @@ export default function Settings({ user, onToast, onLogout }) {
   const [saving, setSaving] = useState(false)
   const [addingPeriod, setAddingPeriod] = useState(false)
   const [showAddPeriod, setShowAddPeriod] = useState(false)
-  const [activeTab, setActiveTab] = useState('business-profile') // 'business-profile' | 'fiscal-periods' | 'account'
+  const [activeTab, setActiveTab] = useState('business-profile') // 'business-profile' | 'fiscal-periods' | 'backups' | 'account'
   const [profileBannerDismissed, setProfileBannerDismissed] = useState(false)
+  // Backup & Restore state
+  const [backupStats, setBackupStats]             = useState(null)
+  const [downloadingBackup, setDownloadingBackup] = useState(false)
+  const [restoringBackup, setRestoringBackup]     = useState(false)
+  const [restoreFile, setRestoreFile]             = useState(null)
+  const [restoreSummary, setRestoreSummary]       = useState(null)
+  const [restoreError, setRestoreError]           = useState('')
   // Account deletion state
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('')
   const [deleteError, setDeleteError]   = useState('')
@@ -178,13 +194,119 @@ export default function Settings({ user, onToast, onLogout }) {
     }
   }
 
+  // Backup & Restore logic
+  const fetchBackupStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/settings/backup/stats`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBackupStats(data.stats)
+      }
+    } catch (err) {
+      console.error('Failed to fetch backup stats:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'backups') {
+      fetchBackupStats()
+    }
+  }, [activeTab])
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true)
+    try {
+      const res = await fetch(`${API_URL}/api/settings/backup/download`, {
+        credentials: 'include',
+        headers: getAuthHeaders()
+      })
+      if (!res.ok) throw new Error('Failed to generate backup')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vyapaar-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      if (onToast) onToast('Complete database snapshot downloaded to your device!', 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Download failed: ' + err.message, 'error')
+    } finally {
+      setDownloadingBackup(false)
+    }
+  }
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    setRestoreError('')
+    setRestoreSummary(null)
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result)
+        if (json.app !== 'Vyapaar' || !json.data) {
+          setRestoreError('Invalid backup file. Must be an official Vyapaar JSON backup.')
+          setRestoreFile(null)
+          return
+        }
+        setRestoreFile(file)
+        setRestoreSummary({
+          exported_at: json.exported_at,
+          suppliers: json.counts?.suppliers ?? json.data?.suppliers?.length ?? 0,
+          purchase_entries: json.counts?.purchase_entries ?? json.data?.purchase_entries?.length ?? 0,
+          payments: json.counts?.supplier_payments ?? json.data?.supplier_payments?.length ?? 0,
+        })
+      } catch {
+        setRestoreError('Could not parse file. Please upload a valid JSON backup file.')
+        setRestoreFile(null)
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleRestoreSubmit = async () => {
+    if (!restoreFile) return
+    setRestoringBackup(true)
+    setRestoreError('')
+    try {
+      const text = await restoreFile.text()
+      const json = JSON.parse(text)
+      const res = await fetch(`${API_URL}/api/settings/backup/restore`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ backup: json })
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Restore failed')
+      setRestoreFile(null)
+      setRestoreSummary(null)
+      fetchBackupStats()
+      if (onToast) onToast(`Restored ${result.restored.purchase_entries} bills and ${result.restored.suppliers} suppliers!`, 'success')
+    } catch (err) {
+      console.error(err)
+      setRestoreError(err.message)
+      if (onToast) onToast('Restore failed: ' + err.message, 'error')
+    } finally {
+      setRestoringBackup(false)
+    }
+  }
+
   return (
     <div className="set-page">
       {/* Header */}
       <div className="set-header">
         <div>
           <h2 className="set-title">Settings</h2>
-          <p className="set-subtitle">Manage business profile credentials and BS fiscal period calendar</p>
+          <p className="set-subtitle">Manage business profile credentials, BS fiscal period calendar, and data backups</p>
         </div>
       </div>
 
@@ -205,6 +327,14 @@ export default function Settings({ user, onToast, onLogout }) {
         >
           <CalendarIcon />
           <span>Fiscal Periods</span>
+        </button>
+        <button
+          type="button"
+          className={`set-tab ${activeTab === 'backups' ? 'active' : ''}`}
+          onClick={() => setActiveTab('backups')}
+        >
+          <DatabaseIcon />
+          <span>Data & Backups</span>
         </button>
         <button
           type="button"
@@ -479,6 +609,139 @@ export default function Settings({ user, onToast, onLogout }) {
         )}
 
         {/* ── Account Tab ── */}
+        {activeTab === 'backups' && (
+          <div className="set-card">
+            <div className="set-card-header">
+              <div>
+                <h3 className="set-card-title">Data Backup & Cloud Safety (डेटा ब्याकअप)</h3>
+                <p className="set-card-desc">
+                  Protect your business records. Download offline snapshots or restore data anytime with complete peace of mind.
+                </p>
+              </div>
+            </div>
+            <div className="set-card-divider" />
+
+            {/* Cloud Health & Free Tier Reality Info */}
+            <div className="set-backup-health-banner">
+              <div className="set-backup-health-icon">
+                <DatabaseIcon />
+              </div>
+              <div className="set-backup-health-content">
+                <div className="set-backup-health-title">
+                  <span>Neon PostgreSQL Cloud:</span>
+                  <span className="set-badge-healthy">Active Free Tier (0.5 GB Quota)</span>
+                </div>
+                <p className="set-backup-health-text">
+                  Your billing and supplier data consists of lightweight text records. A <strong>500 MB quota stores over 200,000+ invoices</strong> (decades of typical SME business). However, saving periodic offline backups guarantees you never lose access if cloud hosting policies ever change or expire.
+                </p>
+              </div>
+            </div>
+
+            {/* Record summary stats */}
+            <div className="set-backup-stats-row">
+              <div className="set-backup-stat-card">
+                <span className="set-backup-stat-val">{backupStats?.suppliers ?? '—'}</span>
+                <span className="set-backup-stat-lbl">Suppliers</span>
+              </div>
+              <div className="set-backup-stat-card">
+                <span className="set-backup-stat-val">{backupStats?.purchase_entries ?? '—'}</span>
+                <span className="set-backup-stat-lbl">Purchase Invoices</span>
+              </div>
+              <div className="set-backup-stat-card">
+                <span className="set-backup-stat-val">{backupStats?.payments ?? '—'}</span>
+                <span className="set-backup-stat-lbl">Payments</span>
+              </div>
+              <div className="set-backup-stat-card">
+                <span className="set-backup-stat-val">{backupStats?.fiscal_periods ?? '—'}</span>
+                <span className="set-backup-stat-lbl">Fiscal Periods</span>
+              </div>
+            </div>
+
+            <div className="set-card-divider" />
+
+            {/* 1-Click Manual Backup Download */}
+            <div className="set-backup-section">
+              <div className="set-backup-section-header">
+                <div>
+                  <h4 className="set-backup-section-title">1. One-Click Complete Data Backup</h4>
+                  <p className="set-backup-section-desc">
+                    Download an offline JSON snapshot of all your suppliers, purchase bills, and payments directly to your mobile phone or computer.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="set-btn-primary set-btn-backup-download"
+                  onClick={handleDownloadBackup}
+                  disabled={downloadingBackup}
+                >
+                  <DownloadCloudIcon />
+                  <span>{downloadingBackup ? 'Generating Backup…' : 'Download Complete Backup (.json)'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="set-card-divider" />
+
+            {/* Restore from Backup */}
+            <div className="set-backup-section">
+              <h4 className="set-backup-section-title">2. Restore / Import from Backup</h4>
+              <p className="set-backup-section-desc">
+                Need to recover data or transfer to another device? Upload your previously downloaded Vyapaar JSON backup file below.
+              </p>
+
+              <div className="set-restore-box">
+                <label className="set-restore-dropzone">
+                  <UploadCloudIcon />
+                  <span className="set-restore-dropzone-text">
+                    {restoreFile ? restoreFile.name : 'Click or tap to select Vyapaar backup JSON file'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {restoreError && (
+                  <div className="set-restore-error">
+                    {restoreError}
+                  </div>
+                )}
+
+                {restoreSummary && (
+                  <div className="set-restore-preview">
+                    <div className="set-restore-preview-title">
+                      ✓ Valid Backup File Detected ({new Date(restoreSummary.exported_at).toLocaleDateString()})
+                    </div>
+                    <div className="set-restore-preview-details">
+                      Contains {restoreSummary.purchase_entries} invoices, {restoreSummary.suppliers} suppliers, and {restoreSummary.payments} payments.
+                    </div>
+                    <button
+                      type="button"
+                      className="set-btn-primary set-btn-restore"
+                      onClick={handleRestoreSubmit}
+                      disabled={restoringBackup}
+                    >
+                      {restoringBackup ? 'Restoring records…' : 'Confirm & Restore Records'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="set-card-divider" />
+
+            {/* Automated GitHub Actions Backup Info */}
+            <div className="set-backup-section">
+              <h4 className="set-backup-section-title">3. Automated Scheduled Cloud Backups ($0 / Month)</h4>
+              <p className="set-backup-section-desc">
+                An automated GitHub Action workflow (<code>.github/workflows/db-backup.yml</code>) runs on a weekly schedule. Every Sunday at midnight UTC, it automatically executes <code>pg_dump</code> against your Neon PostgreSQL instance, compresses it, and securely saves the archive in your private GitHub repository at zero cost.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'account' && (
           <div className="set-card">
             <div className="set-card-header">

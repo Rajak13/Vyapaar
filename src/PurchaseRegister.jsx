@@ -6,6 +6,7 @@ import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
 import { adToBs } from './adToBs.js'
 import { exportPurchaseRegisterPDF } from './exportPdf.js'
+import { exportPurchaseRegisterExcel } from './exportExcel.js'
 import FetchBar from './FetchBar.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -50,6 +51,9 @@ function DeleteIcon() {
 }
 function PdfIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+}
+function SheetIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
 }
 
 // ── Paid status badge ─────────────────────────────────────────────────────────
@@ -255,7 +259,7 @@ export default function PurchaseRegister({ theme, onToast }) {
         e.date_bs || '',
         fmtDate(e.date_ad),
         e.supplier_name || '',
-        e.supplier_pan ?? '',
+        e.supplier_pan ? `\t${e.supplier_pan}` : '',
         e.account_head ?? '',
         Number(e.tax_exempt_purchases || 0).toFixed(2),
         Number(e.taxable_purchases || 0).toFixed(2),
@@ -301,6 +305,31 @@ export default function PurchaseRegister({ theme, onToast }) {
     }
   }
 
+  // Full unpaginated Excel export with colors, dynamic column widths, and proper number formatting
+  async function exportExcel() {
+    setIsExporting(true)
+    try {
+      const res = await fetchEntries(getExportFilterParams())
+      const allEntries = res.entries ?? []
+      if (allEntries.length === 0) {
+        if (onToast) onToast('No entries found to export.', 'error')
+        return
+      }
+      exportPurchaseRegisterExcel({
+        entries: allEntries,
+        totals: res.totals ?? {},
+        filters: { dateFrom, dateTo, suppFilter, billTypeFilter, search },
+        profile: profile
+      })
+      if (onToast) onToast(`Exported all ${allEntries.length} entries to styled Excel (.xls).`, 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Failed to export Excel: ' + err.message, 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Full unpaginated PDF export
   async function exportPDF() {
     setIsExporting(true)
@@ -341,13 +370,17 @@ export default function PurchaseRegister({ theme, onToast }) {
             <FilterIcon />
             <span>Filters{hasFilters ? ' •' : ''}</span>
           </button>
-          <button className="pr-btn-ghost" onClick={exportCSV} disabled={entries.length === 0 || isExporting}>
-            <DownloadIcon />
-            <span>{isExporting ? 'Exporting…' : 'Export CSV'}</span>
+          <button className="pr-btn-ghost pr-btn-ghost--excel" onClick={exportExcel} disabled={entries.length === 0 || isExporting} title="Export styled Excel spreadsheet with colors & auto-fit columns">
+            <SheetIcon />
+            <span>{isExporting ? 'Exporting…' : 'Export Excel'}</span>
           </button>
-          <button className="pr-btn-ghost" onClick={exportPDF} disabled={entries.length === 0 || isExporting}>
+          <button className="pr-btn-ghost" onClick={exportCSV} disabled={entries.length === 0 || isExporting} title="Export CSV">
+            <DownloadIcon />
+            <span>{isExporting ? 'Exporting…' : 'CSV'}</span>
+          </button>
+          <button className="pr-btn-ghost" onClick={exportPDF} disabled={entries.length === 0 || isExporting} title="Export VAT Purchase Register PDF (खरिद खाता)">
             <PdfIcon />
-            <span>{isExporting ? 'Exporting…' : 'Export PDF'}</span>
+            <span>{isExporting ? 'Exporting…' : 'PDF'}</span>
           </button>
           <button className="pr-btn-primary" onClick={() => { setEditEntry(null); setShowForm(true) }}>
             <PlusIcon />
@@ -474,11 +507,14 @@ export default function PurchaseRegister({ theme, onToast }) {
               </button>
             )}
             <div className="pr-filter-export-group">
-              <button type="button" className="pr-btn-export-outline" onClick={exportPDF} disabled={isExporting || total === 0}>
-                <PdfIcon /> {isExporting ? 'Exporting…' : 'Export PDF'}
+              <button type="button" className="pr-btn-export-outline pr-btn-export-outline--excel" onClick={exportExcel} disabled={isExporting || total === 0} title="Export styled Excel (.xls)">
+                <SheetIcon /> {isExporting ? 'Exporting…' : 'Export Excel'}
               </button>
-              <button type="button" className="pr-btn-export-outline" onClick={exportCSV} disabled={isExporting || total === 0}>
-                <DownloadIcon /> {isExporting ? 'Exporting…' : 'Export CSV'}
+              <button type="button" className="pr-btn-export-outline" onClick={exportCSV} disabled={isExporting || total === 0} title="Export raw CSV">
+                <DownloadIcon /> {isExporting ? 'Exporting…' : 'CSV'}
+              </button>
+              <button type="button" className="pr-btn-export-outline" onClick={exportPDF} disabled={isExporting || total === 0} title="Export VAT Register PDF">
+                <PdfIcon /> {isExporting ? 'Exporting…' : 'PDF (खरिद खाता)'}
               </button>
             </div>
           </div>
@@ -503,6 +539,16 @@ export default function PurchaseRegister({ theme, onToast }) {
             <div className="pr-totals-quick-actions">
               <button
                 type="button"
+                className="pr-btn-mini-export pr-btn-mini-export--excel"
+                onClick={exportExcel}
+                disabled={isExporting}
+                title="Download styled Excel spreadsheet (.xls) with colors & auto-fit columns"
+              >
+                <SheetIcon />
+                <span>{isExporting ? 'Exporting…' : 'Excel'}</span>
+              </button>
+              <button
+                type="button"
                 className="pr-btn-mini-export"
                 onClick={exportPDF}
                 disabled={isExporting}
@@ -516,7 +562,7 @@ export default function PurchaseRegister({ theme, onToast }) {
                 className="pr-btn-mini-export"
                 onClick={exportCSV}
                 disabled={isExporting}
-                title="Download full CSV"
+                title="Download CSV"
               >
                 <DownloadIcon />
                 <span>{isExporting ? 'Exporting…' : 'CSV'}</span>

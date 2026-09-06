@@ -1,0 +1,46 @@
+name: Automated Database Backup
+
+on:
+  schedule:
+    # Run every Sunday at midnight UTC (05:45 AM NPT)
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allows manual backup trigger anytime from the GitHub Actions tab
+
+jobs:
+  backup:
+    name: Backup PostgreSQL to Secure Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Database URL Secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is not set in GitHub Repository Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Execute pg_dump and Compress
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          BACKUP_DATE=$(date +'%Y-%m-%d_%H%M%S')
+          mkdir -p backups
+          echo "Dumping PostgreSQL schema and data..."
+          pg_dump "$DATABASE_URL" --clean --if-exists --no-owner --no-privileges | gzip > "backups/vyapaar-db-${BACKUP_DATE}.sql.gz"
+          echo "Backup file size:"
+          ls -lh backups/
+
+      - name: Upload Backup to GitHub Artifacts (Stored for 90 days, Free)
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyapaar-database-backup-${{ github.run_id }}
+          path: backups/*.sql.gz
+          retention-days: 90
