@@ -1,6 +1,7 @@
 /**
  * Export Purchase Register to PDF / Printable Document
  * Formats according to Nepali VAT Purchase Register (खरिद खाता) guidelines.
+ * Includes PWA top & bottom navigation bars with "Back to App" buttons for standalone iOS/Android PWAs.
  */
 import { adToBs } from './adToBs.js'
 
@@ -33,6 +34,7 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
   <title>Purchase Register - ${taxpayerName}</title>
   <style>
     @page {
@@ -51,6 +53,130 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
       background: #ffffff;
       padding: 16px;
     }
+
+    /* ── PWA Top Sticky Bar (Non-Printable) ── */
+    .pwa-top-bar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: #1c1917;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 12px;
+      margin: -16px -16px 18px -16px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    }
+    .btn-pwa-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .btn-pwa-back:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .btn-pwa-print {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ab2f00;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 6px rgba(171, 47, 0, 0.4);
+    }
+    .btn-pwa-print:active {
+      background: #862300;
+    }
+
+    /* ── Mobile Floating Bottom Bar (Thumb-Friendly) ── */
+    .pwa-bottom-bar {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .pwa-bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        background: rgba(28, 25, 23, 0.96);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        gap: 10px;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+      }
+      .btn-pwa-back-bottom {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #2b2826;
+        color: #ffffff;
+        border: 1px solid #44403c;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn-pwa-print-bottom {
+        flex: 1.3;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #ab2f00;
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        box-shadow: 0 2px 8px rgba(171, 47, 0, 0.35);
+      }
+      body {
+        padding-bottom: 84px !important;
+      }
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        padding: 0 !important;
+      }
+    }
+
+    /* ── Document Content ── */
     .header {
       text-align: center;
       margin-bottom: 16px;
@@ -72,7 +198,7 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
       font-size: 14px;
       font-weight: 700;
       margin-top: 6px;
-      color: #eb5e28;
+      color: #ab2f00;
     }
     .meta-bar {
       display: flex;
@@ -80,6 +206,8 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
       font-size: 10.5px;
       margin-bottom: 12px;
       color: #444;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     table {
       width: 100%;
@@ -101,41 +229,36 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
     }
     .num {
       text-align: right;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
     }
-    tr.missed-row {
-      background: #fff8f5;
+    .missed-row {
+      background: #fffcf7;
     }
     .tag-missed {
       display: inline-block;
       font-size: 8.5px;
-      padding: 1px 4px;
-      border-radius: 3px;
+      font-weight: 700;
       background: #eb5e28;
       color: #fff;
-      font-weight: bold;
+      padding: 1px 4px;
+      border-radius: 3px;
       margin-left: 4px;
     }
-    tfoot tr {
-      background: #eae5dc;
-      font-weight: 800;
-    }
-    tfoot td {
-      border-top: 2px solid #252422;
-    }
     .summary-card {
-      margin-top: 14px;
-      border: 1.5px solid #252422;
-      border-radius: 6px;
-      padding: 10px 14px;
+      border: 2px solid #252422;
       background: #fdfbf7;
+      border-radius: 6px;
+      padding: 12px 16px;
       display: flex;
-      justify-content: space-around;
-      font-size: 11px;
+      justify-content: space-between;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .summary-item {
       text-align: center;
+      flex: 1;
+      min-width: 100px;
     }
     .summary-label {
       font-size: 9px;
@@ -150,31 +273,32 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
       color: #1a1917;
     }
     .summary-val.highlight {
-      color: #eb5e28;
-    }
-    .print-controls {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: #eb5e28;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: 6px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    @media print {
-      .print-controls {
-        display: none;
-      }
+      color: #ab2f00;
     }
   </style>
 </head>
 <body>
-  <button class="print-controls" onclick="window.print()">Print / Save as PDF</button>
+  <!-- Top Navigation Bar for standalone PWA & desktop -->
+  <div class="pwa-top-bar no-print">
+    <button class="btn-pwa-back" onclick="goBackToApp()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <span>← Back to Vyapaar (एपमा फर्कनुहोस्)</span>
+    </button>
+    <button class="btn-pwa-print" onclick="window.print()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <span>Print / Save as PDF</span>
+    </button>
+  </div>
+
+  <!-- Bottom Floating Bar for Mobile Touch Ergonomics -->
+  <div class="pwa-bottom-bar no-print">
+    <button class="btn-pwa-back-bottom" onclick="goBackToApp()">
+      ← Back to App
+    </button>
+    <button class="btn-pwa-print-bottom" onclick="window.print()">
+      🖨️ Print / Save PDF
+    </button>
+  </div>
 
   <div class="header">
     <div class="company-name">${taxpayerName}</div>
@@ -193,9 +317,9 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
     <thead>
       <tr>
         <th style="width: 30px;">S.N.</th>
-        <th style="width: 75px;">Date (BS)</th>
-        <th style="width: 75px;">Date (AD)</th>
-        <th style="width: 90px;">Invoice No.</th>
+        <th style="width: 70px;">Date (BS)</th>
+        <th style="width: 70px;">Date (AD)</th>
+        <th style="width: 85px;">Invoice No.</th>
         <th>Supplier</th>
         <th style="width: 80px;">PAN</th>
         <th class="num" style="width: 85px;">Tax Exempt</th>
@@ -229,7 +353,7 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
         <td class="num"><strong>${fmtRs(totals?.tax_exempt_purchases)}</strong></td>
         <td class="num"><strong>${fmtRs(totals?.taxable_purchases)}</strong></td>
         <td class="num"><strong>${fmtRs(totals?.tax_amount)}</strong></td>
-        <td class="num"><strong style="color: #eb5e28;">${fmtRs(totals?.grand_total)}</strong></td>
+        <td class="num"><strong style="color: #ab2f00;">${fmtRs(totals?.grand_total)}</strong></td>
       </tr>
     </tfoot>
   </table>
@@ -258,6 +382,21 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
   </div>
 
   <script>
+    function goBackToApp() {
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.close();
+          return;
+        }
+      } catch (e) {}
+
+      if (window.history && window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }
+
     window.onload = function() {
       // Auto-trigger print dialog after render
       setTimeout(function() {
