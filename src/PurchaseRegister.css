@@ -360,6 +360,11 @@
   min-width: 170px;
   cursor: pointer;
 }
+.pr-filter-select option,
+.pr-sort-select option {
+  background: var(--dc);
+  color: var(--df);
+}
 .pr-filter-select:focus,
 .pr-filter-input:focus { border-color: #ab2f00; }
 
@@ -828,3 +833,6 @@
 .pr-status-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
 .pr-status-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
 .pr-status-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }
+.dash-page.app-dark .pr-status-paid    { background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1.5px solid #34d399; }
+.dash-page.app-dark .pr-status-partial { background: transparent; color: #F8FAFC; border: 1.5px dashed #9CA3AF; }
+.dash-page.app-dark .pr-status-pending { background: transparent; color: #9CA3AF; border: 1.5px solid #9CA3AF; }

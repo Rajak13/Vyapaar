@@ -16,6 +16,8 @@
   --dm: #8A8578;
   --dash-border: rgba(28, 27, 25, 0.12);
   --dbd: rgba(28, 27, 25, 0.06);
+  --dash-panel-hover: rgba(28, 27, 25, 0.05);
+  --dash-bg: #FFFFFF;
   --orange: #B54B32;
   --ledger-green: #3C5943;
   background: #F7F5F0;
@@ -28,6 +30,8 @@
   --dm: #9CA3AF;
   --dash-border: #2E2E2E;
   --dbd: rgba(255, 255, 255, 0.08);
+  --dash-panel-hover: rgba(255, 255, 255, 0.05);
+  --dash-bg: #1E1E1E;
   --orange: #E04F16;
   --ledger-green: #34d399;
   background: #121212;
@@ -700,9 +704,9 @@
 .dash-badge-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
 .dash-badge-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
 .dash-badge-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }
-.dash-page.app-dark .dash-badge-paid    { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
-.dash-page.app-dark .dash-badge-partial { background: transparent; color: #1C1B19; border: 1.5px dashed #8A8578; }
-.dash-page.app-dark .dash-badge-pending { background: transparent; color: #8A8578; border: 1.5px solid #8A8578; }
+.dash-page.app-dark .dash-badge-paid    { background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1.5px solid #34d399; }
+.dash-page.app-dark .dash-badge-partial { background: transparent; color: #F8FAFC; border: 1.5px dashed #9CA3AF; }
+.dash-page.app-dark .dash-badge-pending { background: transparent; color: #9CA3AF; border: 1.5px solid #9CA3AF; }
 
 .dash-table-footer {
   padding: 8px 20px 10px;

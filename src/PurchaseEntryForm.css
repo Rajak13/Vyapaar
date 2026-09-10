@@ -548,13 +548,83 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 .app-light .pef-dropdown-item {
-  color: #252422;
+  color: #1c1b19;
+}
+.app-light .pef-dropdown-name {
+  color: #1c1b19 !important;
+  font-weight: 600;
+}
+.app-light .pef-dropdown-meta {
+  color: #57534e !important;
+  font-weight: 500;
 }
 .app-light .pef-dropdown-item:hover {
   background: #f4f0ea;
 }
-.app-light .pef-dropdown-meta {
-  color: #7a7366;
+.app-light .pef-dropdown-add {
+  color: #ab2f00 !important;
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+.app-light .pef-dropdown-add:hover {
+  background: #f4f0ea;
+}
+.app-light .pef-dropdown-empty {
+  color: #78716c;
+}
+.app-light .pef-lang-toggle {
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #5c5549;
+  background: rgba(0, 0, 0, 0.03);
+}
+.app-light .pef-lang-toggle:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #1c1b19;
+  border-color: rgba(0, 0, 0, 0.35);
+}
+.app-light .pef-input-readonly {
+  color: #5c5549 !important;
+}
+.app-light .pef-input-readonly:focus {
+  color: #1c1b19 !important;
+}
+.app-light .pef-cal-trigger-btn {
+  background: rgba(171, 47, 0, 0.08);
+  border-color: rgba(171, 47, 0, 0.3);
+  color: #ab2f00;
+}
+.app-light .pef-cal-trigger-btn:hover {
+  background: rgba(171, 47, 0, 0.18);
+}
+.app-light .pef-adv-toggle {
+  border-color: rgba(171, 47, 0, 0.35);
+  color: #ab2f00;
+}
+.app-light .pef-adv-toggle:hover {
+  background: rgba(171, 47, 0, 0.06);
+  border-color: #ab2f00;
+}
+.app-light .pef-adv-box {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+.app-light .pef-section-label {
+  color: #78716c;
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+.app-light .pef-autotax-toggle span {
+  color: #5c5549;
+}
+.app-light .pef-missed-desc {
+  color: #57534e;
+}
+.app-light .pef-missed-bill-row.active {
+  background: rgba(171, 47, 0, 0.06);
+  border-color: rgba(171, 47, 0, 0.35);
+}
+.app-light .pef-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.65;
 }
 .app-light .pef-totals {
   background: #f4f0ea;
@@ -572,7 +642,11 @@
   color: #252422;
 }
 .app-light .pef-submit:hover:not(:disabled) {
-  color: #eb5e28;
+  color: #ab2f00;
+}
+.app-light .pef-spinner {
+  border-color: rgba(0, 0, 0, 0.15);
+  border-top-color: #ab2f00;
 }
 @media (max-width: 768px) {
   .app-light .pef-panel {

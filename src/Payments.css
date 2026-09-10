@@ -239,6 +239,9 @@
 .pay-badge-cash   { background: rgba(60, 89, 67, 0.08); color: #3C5943; border: 1.5px solid #3C5943; }
 .pay-badge-online { background: transparent; color: #1C1B19; border: 1.5px solid #1C1B19; }
 .pay-badge-cheque { background: transparent; color: #8A8578; border: 1.5px dashed #8A8578; }
+.dash-page.app-dark .pay-badge-cash   { background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1.5px solid #34d399; }
+.dash-page.app-dark .pay-badge-online { background: transparent; color: #F8FAFC; border: 1.5px solid #9CA3AF; }
+.dash-page.app-dark .pay-badge-cheque { background: transparent; color: #9CA3AF; border: 1.5px dashed #9CA3AF; }
 
 /* Skeleton */
 .pay-skeleton-row td { padding: 14px 18px; border-top: 1px solid var(--dash-border); }
@@ -595,5 +598,72 @@
   @keyframes pay-slide-up {
     from { transform: translateY(100%); opacity: 0; }
     to   { transform: translateY(0); opacity: 1; }
+  }
+}
+
+/* ════════════════════════════════════════════
+   LIGHT THEME SUPPORT FOR PAYMENT FORM
+════════════════════════════════════════════ */
+.dash-page.app-light .pay-panel {
+  background: #fffcf2;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-panel-title {
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-panel-close {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #57534e;
+}
+.dash-page.app-light .pay-panel-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-panel-divider {
+  background: rgba(0, 0, 0, 0.1);
+}
+.dash-page.app-light .pay-label {
+  color: #5c5549;
+}
+.dash-page.app-light .pay-input,
+.dash-page.app-light .pay-select {
+  color: #1c1b19;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+.dash-page.app-light .pay-input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+.dash-page.app-light .pay-select option {
+  background: #ffffff;
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-method-pill {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #57534e;
+}
+.dash-page.app-light .pay-method-pill:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-method-pill.active {
+  background: rgba(171, 47, 0, 0.08);
+  border-color: #ab2f00;
+  color: #ab2f00;
+}
+.dash-page.app-light .pay-submit {
+  border-top-color: rgba(0, 0, 0, 0.12);
+  color: #1c1b19;
+}
+.dash-page.app-light .pay-submit:hover:not(:disabled) {
+  color: #ab2f00;
+}
+.dash-page.app-light .pay-spinner {
+  border-color: rgba(0, 0, 0, 0.15);
+  border-top-color: #ab2f00;
+}
+@media (max-width: 640px) {
+  .dash-page.app-light .pay-panel {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
   }
 }

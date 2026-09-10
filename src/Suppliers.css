@@ -580,3 +580,55 @@
 
   .sup-fab { display: none !important; }
 }
+
+/* ════════════════════════════════════════════
+   LIGHT THEME SUPPORT FOR SUPPLIER FORM
+════════════════════════════════════════════ */
+.dash-page.app-light .sup-panel {
+  background: #fffcf2;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1c1b19;
+}
+.dash-page.app-light .sup-panel-title {
+  color: #1c1b19;
+}
+.dash-page.app-light .sup-panel-close {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #57534e;
+}
+.dash-page.app-light .sup-panel-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1c1b19;
+}
+.dash-page.app-light .sup-panel-divider {
+  background: rgba(0, 0, 0, 0.1);
+}
+.dash-page.app-light .sup-label {
+  color: #5c5549;
+}
+.dash-page.app-light .sup-input {
+  color: #1c1b19;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+.dash-page.app-light .sup-input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+.dash-page.app-light .sup-active-toggle span {
+  color: #57534e;
+}
+.dash-page.app-light .sup-submit {
+  border-top-color: rgba(0, 0, 0, 0.12);
+  color: #1c1b19;
+}
+.dash-page.app-light .sup-submit:hover:not(:disabled) {
+  color: #ab2f00;
+}
+.dash-page.app-light .sup-spinner {
+  border-color: rgba(0, 0, 0, 0.15);
+  border-top-color: #ab2f00;
+}
+@media (max-width: 768px) {
+  .dash-page.app-light .sup-panel {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+}

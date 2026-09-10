@@ -84,11 +84,19 @@
   color: #fffcf2;
   border-color: rgba(204, 197, 185, 0.2);
 }
+.cal-dark .nepali-cal-select option {
+  background: #252422;
+  color: #fffcf2;
+}
 
 .cal-light .nepali-cal-select {
   background: #f4f2ee;
   color: #1a1917;
   border-color: rgba(0, 0, 0, 0.12);
+}
+.cal-light .nepali-cal-select option {
+  background: #ffffff;
+  color: #1a1917;
 }
 
 .nepali-cal-select-year {
