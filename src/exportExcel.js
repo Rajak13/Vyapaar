@@ -11,6 +11,17 @@
  * - Accounting number format (#,##0.00) with top solid and bottom double underline
  */
 import ExcelJS from 'exceljs'
+import { adToBs } from './adToBs.js'
+
+function toBsDate(str) {
+  if (!str) return ''
+  const s = String(str).trim()
+  if (s.startsWith('207') || s.startsWith('208') || s.startsWith('209')) {
+    return s
+  }
+  const bs = adToBs(s)
+  return bs || s
+}
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -82,12 +93,26 @@ export async function exportPurchaseRegisterExcel({ entries = [], totals = {}, f
   titleRow.alignment = { vertical: 'middle', horizontal: 'left' }
 
   let periodText = 'All Entries'
-  if (filters.dateFrom || filters.dateTo) {
-    const fromText = filters.dateFrom ? `${filters.dateFrom} BS` : 'Start'
-    const toText = filters.dateTo ? `${filters.dateTo} BS` : 'Present'
-    periodText = `${fromText} to ${toText}`
+  const bsFrom = toBsDate(filters.dateFrom)
+  const bsTo   = toBsDate(filters.dateTo)
+
+  if (bsFrom && bsTo) {
+    periodText = `${bsFrom} to ${bsTo} (वि.सं.)`
+  } else if (bsFrom) {
+    periodText = `From ${bsFrom} (वि.सं.)`
+  } else if (bsTo) {
+    periodText = `Up to ${bsTo} (वि.सं.)`
+  } else if (entries.length > 0) {
+    const dates = entries.map(e => e.date_bs).filter(Boolean).sort()
+    if (dates.length > 0) {
+      const minDate = dates[0]
+      const maxDate = dates[dates.length - 1]
+      periodText = minDate === maxDate ? `${minDate} (वि.सं.)` : `${minDate} to ${maxDate} (वि.सं.)`
+    }
   }
-  const exportDate = new Date().toLocaleDateString('en-GB')
+
+  const todayBs = toBsDate(new Date().toISOString().slice(0, 10))
+  const exportDate = `${todayBs} वि.सं. (${new Date().toLocaleDateString('en-GB')})`
   const metaRow = worksheet.addRow([`Period: ${periodText} | PAN: ${pan} | Exported: ${exportDate} (${entries.length} Invoices)`])
   metaRow.height = 18
   metaRow.font = { name: 'Segoe UI', size: 9.5, color: { argb: 'FF6B665E' } }

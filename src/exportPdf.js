@@ -6,14 +6,14 @@
  */
 import { adToBs, bsToAd } from './adToBs.js'
 
-function formatFilterDate(dStr) {
-  if (!dStr) return ''
-  if (dStr.startsWith('207') || dStr.startsWith('208') || dStr.startsWith('209')) {
-    const ad = bsToAd(dStr)
-    return ad ? `${dStr} BS (${ad} AD)` : `${dStr} BS`
+function toBsDate(str) {
+  if (!str) return ''
+  const s = String(str).trim()
+  if (s.startsWith('207') || s.startsWith('208') || s.startsWith('209')) {
+    return s
   }
-  const bs = adToBs(dStr)
-  return bs ? `${dStr} (${bs} BS)` : dStr
+  const bs = adToBs(s)
+  return bs || s
 }
 
 function fmtRs(n) {
@@ -36,6 +36,9 @@ function loadHtml2Pdf() {
 }
 
 function buildReportContentHtml({ entries, totals, taxpayerName, pan, address, filterPeriod }) {
+  const todayBs = toBsDate(new Date().toISOString().slice(0, 10))
+  const genDate = `${todayBs} वि.सं. (${new Date().toLocaleDateString('en-GB')})`
+
   return `
   <div class="header">
     <div class="company-name">${taxpayerName}</div>
@@ -45,9 +48,9 @@ function buildReportContentHtml({ entries, totals, taxpayerName, pan, address, f
   </div>
 
   <div class="meta-bar">
-    <div><strong>Period:</strong> ${filterPeriod}</div>
-    <div><strong>Total Invoices:</strong> ${entries.length}</div>
-    <div><strong>Generated On:</strong> ${new Date().toLocaleDateString()}</div>
+    <div><strong>अवधि (Period):</strong> ${filterPeriod}</div>
+    <div><strong>कुल बिल:</strong> ${entries.length}</div>
+    <div><strong>मिति (Exported):</strong> ${genDate}</div>
   </div>
 
   <table>
@@ -127,10 +130,24 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
   const pan = profile?.pan || '—'
   const address = profile?.address || ''
 
-  const filterPeriod = [
-    filters.dateFrom ? `From: ${formatFilterDate(filters.dateFrom)}` : '',
-    filters.dateTo ? `To: ${formatFilterDate(filters.dateTo)}` : ''
-  ].filter(Boolean).join('  |  ') || 'All Time'
+  let filterPeriod = 'All Entries'
+  const bsFrom = toBsDate(filters.dateFrom)
+  const bsTo   = toBsDate(filters.dateTo)
+
+  if (bsFrom && bsTo) {
+    filterPeriod = `${bsFrom} देखि ${bsTo} (वि.सं.)`
+  } else if (bsFrom) {
+    filterPeriod = `${bsFrom} देखि (वि.सं.)`
+  } else if (bsTo) {
+    filterPeriod = `${bsTo} सम्म (वि.सं.)`
+  } else if (entries.length > 0) {
+    const dates = entries.map(e => e.date_bs).filter(Boolean).sort()
+    if (dates.length > 0) {
+      const minDate = dates[0]
+      const maxDate = dates[dates.length - 1]
+      filterPeriod = minDate === maxDate ? `${minDate} (वि.सं.)` : `${minDate} देखि ${maxDate} (वि.सं.)`
+    }
+  }
 
   const printWindow = window.open('', '_blank', 'width=1000,height=800')
   if (!printWindow) {
