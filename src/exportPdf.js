@@ -4,7 +4,17 @@
  * Includes direct PDF generation via html2pdf for iOS standalone PWAs,
  * clean vector SVG icons (no emojis), and responsive navigation back to Vyapaar.
  */
-import { adToBs } from './adToBs.js'
+import { adToBs, bsToAd } from './adToBs.js'
+
+function formatFilterDate(dStr) {
+  if (!dStr) return ''
+  if (dStr.startsWith('207') || dStr.startsWith('208') || dStr.startsWith('209')) {
+    const ad = bsToAd(dStr)
+    return ad ? `${dStr} BS (${ad} AD)` : `${dStr} BS`
+  }
+  const bs = adToBs(dStr)
+  return bs ? `${dStr} (${bs} BS)` : dStr
+}
 
 function fmtRs(n) {
   const num = parseFloat(n)
@@ -118,8 +128,8 @@ export function exportPurchaseRegisterPDF({ entries, totals, filters = {}, profi
   const address = profile?.address || ''
 
   const filterPeriod = [
-    filters.dateFrom ? `From: ${filters.dateFrom} (${adToBs(filters.dateFrom)} BS)` : '',
-    filters.dateTo ? `To: ${filters.dateTo} (${adToBs(filters.dateTo)} BS)` : ''
+    filters.dateFrom ? `From: ${formatFilterDate(filters.dateFrom)}` : '',
+    filters.dateTo ? `To: ${formatFilterDate(filters.dateTo)}` : ''
   ].filter(Boolean).join('  |  ') || 'All Time'
 
   const printWindow = window.open('', '_blank', 'width=1000,height=800')

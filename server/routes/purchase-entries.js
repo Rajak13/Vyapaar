@@ -214,7 +214,7 @@ router.get('/purchase-entries', async (req, res) => {
   const isAll = reqLimit === 'all' || reqLimit === 'export'
   const limit  = isAll ? 10000 : Math.min(parseInt(reqLimit ?? '20', 10), 10000)
   const offset = isAll ? 0 : parseInt(req.query.offset ?? '0', 10)
-  const { supplier_id, fiscal_period_id, search, date_from, date_to, sort_by, is_missed_bill } = req.query
+  const { supplier_id, fiscal_period_id, search, date_from, date_to, date_from_bs, date_to_bs, sort_by, is_missed_bill } = req.query
 
   let orderBy = 'ORDER BY pe.date_ad DESC, pe.id DESC'
   if (sort_by === 'date_asc')       orderBy = 'ORDER BY pe.date_ad ASC, pe.id ASC'
@@ -246,11 +246,17 @@ router.get('/purchase-entries', async (req, res) => {
     params.push(`%${search.trim()}%`)
     p++
   }
-  if (date_from) {
+  if (date_from_bs) {
+    conditions.push(`pe.date_bs >= $${p++}`)
+    params.push(date_from_bs)
+  } else if (date_from) {
     conditions.push(`pe.date_ad >= $${p++}`)
     params.push(date_from)
   }
-  if (date_to) {
+  if (date_to_bs) {
+    conditions.push(`pe.date_bs <= $${p++}`)
+    params.push(date_to_bs)
+  } else if (date_to) {
     conditions.push(`pe.date_ad <= $${p++}`)
     params.push(date_to)
   }

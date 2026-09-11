@@ -17,7 +17,8 @@ const NepaliDate = nepaliDatePkg.default || nepaliDatePkg
 export function adToBs(adDateStr) {
   if (!adDateStr) return ''
   try {
-    const adDate = new Date(adDateStr + 'T00:00:00')
+    const cleanStr = String(adDateStr).slice(0, 10)
+    const adDate = new Date(cleanStr + 'T00:00:00')
     if (isNaN(adDate.getTime())) return ''
     const nd = new NepaliDate(adDate)
     const y = nd.getYear()
@@ -32,6 +33,8 @@ export function adToBs(adDateStr) {
 /**
  * Convert BS date string (YYYY-MM-DD) to AD ISO date string (YYYY-MM-DD).
  * Returns empty string if conversion fails.
+ * Uses local getFullYear/getMonth/getDate instead of toISOString() to avoid
+ * UTC timezone conversion shifting the day back (e.g. Bhadra 7 midnight becoming 18:15 UTC yesterday).
  */
 export function bsToAd(bsDateStr) {
   if (!bsDateStr) return ''
@@ -42,7 +45,10 @@ export function bsToAd(bsDateStr) {
     const nd = new NepaliDate(y, m - 1, d)
     const adDate = nd.toJsDate()
     if (!adDate || isNaN(adDate.getTime())) return ''
-    return adDate.toISOString().slice(0, 10)
+    const year = adDate.getFullYear()
+    const month = String(adDate.getMonth() + 1).padStart(2, '0')
+    const day = String(adDate.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   } catch {
     return ''
   }

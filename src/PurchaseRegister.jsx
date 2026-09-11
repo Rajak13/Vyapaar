@@ -4,9 +4,13 @@ import { Q, fetchSupplierList, fetchEntries, fetchBusinessProfile, getAuthHeader
 import './PurchaseRegister.css'
 import PurchaseEntryForm from './PurchaseEntryForm'
 import InvoiceOverlay from './InvoiceOverlay'
-import { adToBs } from './adToBs.js'
+import { adToBs, bsToAd } from './adToBs.js'
 import { exportPurchaseRegisterPDF } from './exportPdf.js'
 import FetchBar from './FetchBar.jsx'
+import NepaliDatePicker from './NepaliDatePicker.jsx'
+import nepaliDatePkg from 'nepali-date-converter'
+
+const NepaliDate = nepaliDatePkg.default || nepaliDatePkg
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -26,6 +30,16 @@ function fmtDate(d) {
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function PlusIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+}
+function CalendarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  )
 }
 function SearchIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -101,6 +115,8 @@ export default function PurchaseRegister({ theme, onToast }) {
   const [search,      setSearch]      = useState('')
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')
+  const [showCalFrom, setShowCalFrom] = useState(false)
+  const [showCalTo,   setShowCalTo]   = useState(false)
   const [suppFilter,  setSuppFilter]  = useState('')
   const [sortBy,      setSortBy]      = useState('date_desc')
   const [billTypeFilter,  setBillTypeFilter]  = useState('all')
@@ -130,8 +146,16 @@ export default function PurchaseRegister({ theme, onToast }) {
   // Build query params string
   const params = new URLSearchParams({ limit: PAGE_SIZE, offset: page * PAGE_SIZE })
   if (suppFilter)               params.set('supplier_id', suppFilter)
-  if (dateFrom)                 params.set('date_from',   dateFrom)
-  if (dateTo)                   params.set('date_to',     dateTo)
+  if (dateFrom) {
+    params.set('date_from_bs', dateFrom)
+    const ad = bsToAd(dateFrom)
+    if (ad) params.set('date_from', ad)
+  }
+  if (dateTo) {
+    params.set('date_to_bs', dateTo)
+    const ad = bsToAd(dateTo)
+    if (ad) params.set('date_to', ad)
+  }
   if (billTypeFilter === 'regular') params.set('is_missed_bill', 'false')
   if (billTypeFilter === 'missed')  params.set('is_missed_bill', 'true')
   if (debouncedSearch.trim())   params.set('search',      debouncedSearch.trim())
@@ -202,8 +226,16 @@ export default function PurchaseRegister({ theme, onToast }) {
   function getExportFilterParams() {
     const p = new URLSearchParams()
     if (suppFilter)               p.set('supplier_id', suppFilter)
-    if (dateFrom)                 p.set('date_from',   dateFrom)
-    if (dateTo)                   p.set('date_to',     dateTo)
+    if (dateFrom) {
+      p.set('date_from_bs', dateFrom)
+      const ad = bsToAd(dateFrom)
+      if (ad) p.set('date_from', ad)
+    }
+    if (dateTo) {
+      p.set('date_to_bs', dateTo)
+      const ad = bsToAd(dateTo)
+      if (ad) p.set('date_to', ad)
+    }
     if (billTypeFilter === 'regular') p.set('is_missed_bill', 'false')
     if (billTypeFilter === 'missed')  p.set('is_missed_bill', 'true')
     if (debouncedSearch.trim())   p.set('search',      debouncedSearch.trim())
@@ -212,18 +244,41 @@ export default function PurchaseRegister({ theme, onToast }) {
     return p.toString()
   }
 
-  // Quick date presets
+  function getDaysInBsMonth(year, month0) {
+    for (let day = 29; day <= 32; day++) {
+      try {
+        const t = new NepaliDate(year, month0, day)
+        if (t.getMonth() !== month0) return day - 1
+      } catch {
+        return day - 1
+      }
+    }
+    return 32
+  }
+
+  // Quick date presets in Bikram Sambat (वि.सं.)
   function setDatePreset(preset) {
-    const today = new Date()
     if (preset === 'this_month') {
-      const first = new Date(today.getFullYear(), today.getMonth(), 1)
-      setDateFrom(first.toISOString().slice(0, 10))
-      setDateTo(today.toISOString().slice(0, 10))
+      const today = new NepaliDate()
+      const y = today.getYear()
+      const m = today.getMonth() // 0-indexed
+      const first = new NepaliDate(y, m, 1).format('YYYY-MM-DD')
+      const todayBs = today.format('YYYY-MM-DD')
+      setDateFrom(first)
+      setDateTo(todayBs)
     } else if (preset === 'last_month') {
-      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-      const last  = new Date(today.getFullYear(), today.getMonth(), 0)
-      setDateFrom(first.toISOString().slice(0, 10))
-      setDateTo(last.toISOString().slice(0, 10))
+      const today = new NepaliDate()
+      let lastM = today.getMonth() - 1
+      let lastY = today.getYear()
+      if (lastM < 0) {
+        lastM = 11
+        lastY -= 1
+      }
+      const days = getDaysInBsMonth(lastY, lastM)
+      const first = new NepaliDate(lastY, lastM, 1).format('YYYY-MM-DD')
+      const last = new NepaliDate(lastY, lastM, days).format('YYYY-MM-DD')
+      setDateFrom(first)
+      setDateTo(last)
     } else if (preset === 'clear') {
       setDateFrom('')
       setDateTo('')
@@ -416,12 +471,46 @@ export default function PurchaseRegister({ theme, onToast }) {
               </select>
             </div>
             <div className="pr-filter-group">
-              <label className="pr-filter-label">Date from</label>
-              <input className="pr-filter-input" type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); refresh() }} />
+              <label className="pr-filter-label">मिति देखि (Date from BS)</label>
+              <div className="pr-filter-date-wrap">
+                <input
+                  className="pr-filter-input pr-filter-input--bs"
+                  type="text"
+                  placeholder="YYYY-MM-DD (वि.सं.)"
+                  value={dateFrom}
+                  onChange={e => { setDateFrom(e.target.value); setPage(0) }}
+                />
+                <button
+                  type="button"
+                  className="pr-filter-cal-btn"
+                  onClick={() => setShowCalFrom(true)}
+                  title="Nepali Calendar (वि.सं. पात्रो)"
+                  aria-label="Nepali Calendar for Date From"
+                >
+                  <CalendarIcon />
+                </button>
+              </div>
             </div>
             <div className="pr-filter-group">
-              <label className="pr-filter-label">Date to</label>
-              <input className="pr-filter-input" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); refresh() }} />
+              <label className="pr-filter-label">मिति सम्म (Date to BS)</label>
+              <div className="pr-filter-date-wrap">
+                <input
+                  className="pr-filter-input pr-filter-input--bs"
+                  type="text"
+                  placeholder="YYYY-MM-DD (वि.सं.)"
+                  value={dateTo}
+                  onChange={e => { setDateTo(e.target.value); setPage(0) }}
+                />
+                <button
+                  type="button"
+                  className="pr-filter-cal-btn"
+                  onClick={() => setShowCalTo(true)}
+                  title="Nepali Calendar (वि.सं. पात्रो)"
+                  aria-label="Nepali Calendar for Date To"
+                >
+                  <CalendarIcon />
+                </button>
+              </div>
             </div>
           </div>
           <div className="pr-filter-bottom-row">
@@ -453,7 +542,7 @@ export default function PurchaseRegister({ theme, onToast }) {
               <span className="pr-totals-count">{totals.count} {totals.count === 1 ? 'bill' : 'bills'}</span>
               {(dateFrom || dateTo) && (
                 <span className="pr-totals-period">
-                  ({dateFrom || 'Start'} → {dateTo || 'Today'})
+                  ({dateFrom ? `${dateFrom} BS` : 'सुरु'} → {dateTo ? `${dateTo} BS` : 'हाल सम्म'})
                 </span>
               )}
             </div>
@@ -654,6 +743,33 @@ export default function PurchaseRegister({ theme, onToast }) {
           type="purchase"
           data={selectedEntry}
           onClose={() => setSelectedEntry(null)}
+        />
+      )}
+
+      {/* ── Nepali Date Pickers for filter ── */}
+      {showCalFrom && (
+        <NepaliDatePicker
+          value={dateFrom}
+          theme={theme}
+          onChange={selectedBs => {
+            setDateFrom(selectedBs)
+            setShowCalFrom(false)
+            setPage(0)
+          }}
+          onClose={() => setShowCalFrom(false)}
+        />
+      )}
+
+      {showCalTo && (
+        <NepaliDatePicker
+          value={dateTo}
+          theme={theme}
+          onChange={selectedBs => {
+            setDateTo(selectedBs)
+            setShowCalTo(false)
+            setPage(0)
+          }}
+          onClose={() => setShowCalTo(false)}
         />
       )}
     </div>

@@ -220,8 +220,8 @@ export default function PurchaseEntryForm({ onClose, onSuccess, initialData, the
   useEffect(() => {
     if (!dateAd) return
     const bs = adToBs(dateAd)
-    if (bs) setDateBs(bs)
-  }, [dateAd])
+    if (bs && bsToAd(dateBs) !== dateAd) setDateBs(bs)
+  }, [dateAd, dateBs])
 
   // Auto-calculate 13% tax
   useEffect(() => {

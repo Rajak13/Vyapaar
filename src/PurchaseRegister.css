@@ -351,6 +351,38 @@
   transition: border-color 0.15s;
 }
 
+.pr-filter-date-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pr-filter-input--bs {
+  padding-right: 32px;
+  width: 100%;
+}
+
+.pr-filter-cal-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--dm);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.pr-filter-cal-btn:hover {
+  color: var(--df);
+  background: var(--dash-panel-hover);
+}
+
 .pr-sort-select {
   background: var(--dc);
   border-radius: 12px;

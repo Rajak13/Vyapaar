@@ -83,7 +83,9 @@ export async function exportPurchaseRegisterExcel({ entries = [], totals = {}, f
 
   let periodText = 'All Entries'
   if (filters.dateFrom || filters.dateTo) {
-    periodText = `${filters.dateFrom || 'Start'} to ${filters.dateTo || 'Present'}`
+    const fromText = filters.dateFrom ? `${filters.dateFrom} BS` : 'Start'
+    const toText = filters.dateTo ? `${filters.dateTo} BS` : 'Present'
+    periodText = `${fromText} to ${toText}`
   }
   const exportDate = new Date().toLocaleDateString('en-GB')
   const metaRow = worksheet.addRow([`Period: ${periodText} | PAN: ${pan} | Exported: ${exportDate} (${entries.length} Invoices)`])
