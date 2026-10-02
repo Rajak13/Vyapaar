@@ -40,6 +40,15 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
+  // Auto-open auth modal if URL has #login or #register
+  useEffect(() => {
+    if (hash === '#login') {
+      setModal('login')
+    } else if (hash === '#register') {
+      setModal('register')
+    }
+  }, [hash])
+
   function handleThemeChange(newTheme) {
     setTheme(newTheme)
     localStorage.setItem('vyapaar_theme', newTheme)

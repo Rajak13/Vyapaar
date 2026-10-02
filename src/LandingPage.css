@@ -175,3 +175,114 @@
     padding: 0 2vw;
   }
 }
+
+/* ── Floating Top Navigation Bar ── */
+.hero-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 24px 36px;
+  pointer-events: none;
+}
+
+.hero-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-nav-brand {
+  pointer-events: auto;
+}
+
+.hero-nav-logo {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  color: var(--fg, #252422);
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6);
+}
+
+.hero-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.hero-nav-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-nav-btn--ghost {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1a1917;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.hero-nav-btn--ghost:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.hero-nav-btn--primary {
+  background: #ab2f00;
+  color: #ffffff;
+  border: 1px solid rgba(171, 47, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(171, 47, 0, 0.3);
+}
+
+.hero-nav-btn--primary:hover {
+  background: #8b2500;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(171, 47, 0, 0.45);
+}
+
+.app-dark .hero-nav-logo {
+  color: #fffcf2;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+.app-dark .hero-nav-btn--ghost {
+  background: rgba(26, 25, 23, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fffcf2;
+}
+
+.app-dark .hero-nav-btn--ghost:hover {
+  background: #252422;
+}
+
+@media (max-width: 768px) {
+  .hero-nav {
+    padding: 16px 20px;
+  }
+  .hero-nav-logo {
+    font-size: 16px;
+  }
+  .hero-nav-btn {
+    font-size: 12px;
+    padding: 8px 16px;
+  }
+}
+

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import './LandingPage.css'
 
-export default function LandingPage({ theme }) {
+export default function LandingPage({ theme, onOpenAuth }) {
   const trackRef = useRef(null)
   const podRef = useRef(null)
   const leftRef = useRef(null)
@@ -81,6 +81,32 @@ export default function LandingPage({ theme }) {
 
   return (
     <div className={`hero-page app-${theme}`}>
+      {/* ── Fixed Floating Top Navigation Bar ── */}
+      <header className="hero-nav">
+        <div className="hero-nav-inner">
+          <div className="hero-nav-brand">
+            <span className="hero-nav-logo">VYAPAAR</span>
+          </div>
+
+          <div className="hero-nav-actions">
+            <button
+              type="button"
+              className="hero-nav-btn hero-nav-btn--ghost"
+              onClick={() => onOpenAuth?.('login')}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className="hero-nav-btn hero-nav-btn--primary"
+              onClick={() => onOpenAuth?.('register')}
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* ── Scroll Track: 300vh for luxurious, gradual expansion ── */}
       <div ref={trackRef} className="hero-scroll-track">
         <div className="hero-sticky-stage">
