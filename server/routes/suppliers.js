@@ -78,23 +78,48 @@ router.put('/suppliers/:id', async (req, res) => {
   }
 })
 
-// DELETE /api/suppliers/:id — soft delete (scoped to user)
+// DELETE /api/suppliers/:id — hard delete if no history, otherwise soft delete/deactivate
 router.delete('/suppliers/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
 
   try {
-    const { rows } = await pool.query(
-      `UPDATE suppliers
-       SET is_active = false
-       WHERE id = $1 AND user_id = $2
-       RETURNING id`,
+    const checkRes = await pool.query(
+      `SELECT id, name FROM suppliers WHERE id = $1 AND user_id = $2`,
       [id, req.user.id]
     )
-    if (rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
-    return res.json({ message: 'Supplier deactivated.' })
+    if (checkRes.rows.length === 0) return res.status(404).json({ error: 'Supplier not found.' })
+
+    // Check if supplier has any transaction history (bills or payments)
+    const historyRes = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM purchase_entries WHERE supplier_id = $1) AS bill_count,
+         (SELECT COUNT(*)::int FROM supplier_payments WHERE supplier_id = $1) AS pay_count`,
+      [id]
+    )
+    const { bill_count = 0, pay_count = 0 } = historyRes.rows[0] ?? {}
+
+    if (bill_count === 0 && pay_count === 0) {
+      // Safe to permanently hard delete
+      await pool.query(
+        `DELETE FROM suppliers WHERE id = $1 AND user_id = $2`,
+        [id, req.user.id]
+      )
+      return res.json({ deleted: true, message: 'Supplier permanently deleted.' })
+    }
+
+    // Has past records: soft-delete to preserve VAT register & financial audit history
+    await pool.query(
+      `UPDATE suppliers SET is_active = false WHERE id = $1 AND user_id = $2`,
+      [id, req.user.id]
+    )
+    return res.json({
+      deleted: false,
+      deactivated: true,
+      message: `Supplier has ${bill_count} bill(s) and ${pay_count} payment(s). Deactivated to protect VAT records.`
+    })
   } catch (err) {
     console.error('[DELETE /api/suppliers/:id]', err)
-    return res.status(500).json({ error: 'Failed to deactivate supplier.' })
+    return res.status(500).json({ error: 'Failed to delete supplier.' })
   }
 })
 
@@ -103,6 +128,7 @@ router.get('/suppliers/balances', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
+         s.id,
          s.id                                                AS supplier_id,
          s.name                                              AS supplier_name,
          s.pan                                               AS supplier_pan,

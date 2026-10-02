@@ -8,6 +8,7 @@ import { adToBs, bsToAd } from './adToBs.js'
 import { exportPurchaseRegisterPDF } from './exportPdf.js'
 import FetchBar from './FetchBar.jsx'
 import NepaliDatePicker from './NepaliDatePicker.jsx'
+import ConfirmModal from './ConfirmModal.jsx'
 import nepaliDatePkg from 'nepali-date-converter'
 
 const NepaliDate = nepaliDatePkg.default || nepaliDatePkg
@@ -163,6 +164,8 @@ export default function PurchaseRegister({ theme, onToast }) {
   const paramsStr = params.toString()
 
   const [isExporting, setIsExporting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Supplier list (pre-fetched by Dashboard)
   const { data: suppData } = useQuery({ queryKey: Q.suppliers(), queryFn: fetchSupplierList })
@@ -199,27 +202,32 @@ export default function PurchaseRegister({ theme, onToast }) {
     setShowForm(true)
   }
 
-  function handleDelete(id) {
-    if (!window.confirm('Delete this entry? This action cannot be undone.')) return
-    fetch(`${API_URL}/api/purchase-entries/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: getAuthHeaders(),
-    })
-      .then(async res => {
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error ?? 'Failed to delete entry')
-        }
+  function handleDelete(entry) {
+    setDeleteTarget(entry)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/purchase-entries/${deleteTarget.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders(),
       })
-      .then(() => {
-        refresh()
-        if (onToast) onToast('Entry deleted successfully.', 'success')
-      })
-      .catch(err => {
-        console.error(err)
-        if (onToast) onToast(err.message || 'Failed to delete entry', 'error')
-      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error ?? 'Failed to delete entry')
+      }
+      setDeleteTarget(null)
+      refresh()
+      if (onToast) onToast('Entry deleted successfully.', 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast(err.message || 'Failed to delete entry', 'error')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   // Helper to get unpaginated filter query for exports
@@ -644,7 +652,7 @@ export default function PurchaseRegister({ theme, onToast }) {
                   <button className="pr-action-btn" onClick={() => openEdit(entry)} title="Edit entry">
                     <EditIcon />
                   </button>
-                  <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry.id)} title="Delete entry">
+                  <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry)} title="Delete entry">
                     <DeleteIcon />
                   </button>
                 </td>
@@ -692,7 +700,7 @@ export default function PurchaseRegister({ theme, onToast }) {
                 <button className="pr-action-btn" onClick={() => openEdit(entry)} title="Edit entry">
                   <EditIcon />
                 </button>
-                <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry.id)} title="Delete entry">
+                <button className="pr-action-btn pr-action-btn--delete" onClick={() => handleDelete(entry)} title="Delete entry">
                   <DeleteIcon />
                 </button>
               </div>
@@ -770,6 +778,28 @@ export default function PurchaseRegister({ theme, onToast }) {
             setPage(0)
           }}
           onClose={() => setShowCalTo(false)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          isOpen={Boolean(deleteTarget)}
+          title="Delete Purchase Entry"
+          subtitle="VAT Purchase Register Removal"
+          message={`Are you sure you want to delete invoice "${deleteTarget.invoice_no}" from "${deleteTarget.supplier_name}"?`}
+          callout="Deleting this bill will remove it from your VAT purchase register (खरिद खाता) and adjust your input tax balance."
+          details={[
+            { label: 'Invoice No.', value: deleteTarget.invoice_no },
+            { label: 'Supplier', value: deleteTarget.supplier_name },
+            { label: 'Date', value: `${deleteTarget.date_bs || adToBs(deleteTarget.date_ad) || '—'} (${fmtDate(deleteTarget.date_ad)})` },
+            { label: 'Grand Total', value: fmtRs(deleteTarget.grand_total) },
+            { label: 'VAT Amount', value: fmtRs(deleteTarget.tax_amount) },
+          ]}
+          confirmText="Delete Entry"
+          confirmVariant="danger"
+          loading={deleteLoading}
+          onConfirm={handleConfirmDelete}
+          onClose={() => { if (!deleteLoading) setDeleteTarget(null) }}
         />
       )}
     </div>

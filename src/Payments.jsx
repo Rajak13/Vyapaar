@@ -5,6 +5,7 @@ import './Payments.css'
 import { adToBs } from './adToBs.js'
 import InvoiceOverlay from './InvoiceOverlay'
 import FetchBar from './FetchBar.jsx'
+import ConfirmModal from './ConfirmModal.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -307,6 +308,8 @@ export default function Payments({ onToast, openForm: openFormProp }) {
   }, [openFormProp])
   const [sortBy,          setSortBy]          = useState('date_desc')
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [deleteTarget,    setDeleteTarget]    = useState(null)
+  const [deleteLoading,   setDeleteLoading]   = useState(false)
   const qc = useQueryClient()
   const refresh = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['payments'] })
@@ -352,26 +355,31 @@ export default function Payments({ onToast, openForm: openFormProp }) {
     if (onToast) onToast(msg, 'success')
   }
 
-  function handleDeletePayment(id) {
-    if (!window.confirm('Delete this payment record? This cannot be undone.')) return
-    fetch(`${API_URL}/api/supplier-payments/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: getAuthHeaders(),
-    })
-      .then(async res => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(err.error ?? 'Failed to delete payment')
-        }
+  function handleDeletePayment(payment) {
+    setDeleteTarget(payment)
+  }
+
+  async function handleConfirmDeletePayment() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/supplier-payments/${deleteTarget.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders(),
       })
-      .then(() => {
-        refresh()
-        if (onToast) onToast('Payment deleted.', 'success')
-      })
-      .catch(err => {
-        if (onToast) onToast(err.message || 'Failed to delete payment', 'error')
-      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error ?? 'Failed to delete payment')
+      }
+      setDeleteTarget(null)
+      refresh()
+      if (onToast) onToast('Payment deleted.', 'success')
+    } catch (err) {
+      if (onToast) onToast(err.message || 'Failed to delete payment', 'error')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   return (
@@ -493,10 +501,10 @@ export default function Payments({ onToast, openForm: openFormProp }) {
                 <td className="pay-td-muted">{p.invoice_no || <span style={{ opacity: 0.4 }}>General</span>}</td>
                 <td className="pay-col-num pay-td-amount">{fmtRs(p.amount)}</td>
                 <td className="pay-col-actions" onClick={e => e.stopPropagation()}>
-                  <button
+                    <button
                     className="pay-action-btn pay-action-btn--delete"
                     title="Delete payment"
-                    onClick={() => handleDeletePayment(p.id)}
+                    onClick={() => handleDeletePayment(p)}
                   >
                     <DeleteIcon />
                   </button>
@@ -532,7 +540,7 @@ export default function Payments({ onToast, openForm: openFormProp }) {
                 <button
                   className="pay-action-btn pay-action-btn--delete"
                   title="Delete payment"
-                  onClick={() => handleDeletePayment(p.id)}
+                  onClick={() => handleDeletePayment(p)}
                 >
                   <DeleteIcon />
                 </button>
@@ -555,6 +563,27 @@ export default function Payments({ onToast, openForm: openFormProp }) {
           type="payment"
           data={selectedPayment}
           onClose={() => setSelectedPayment(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          isOpen={Boolean(deleteTarget)}
+          title="Delete Payment Record"
+          subtitle="Financial Voucher Removal"
+          message={`Are you sure you want to delete this payment of ${fmtRs(deleteTarget.amount)} to "${deleteTarget.supplier_name}"?`}
+          callout="Deleting this voucher will revert the payment and increase the supplier's outstanding balance due accordingly."
+          details={[
+            { label: 'Supplier', value: deleteTarget.supplier_name },
+            { label: 'Amount', value: fmtRs(deleteTarget.amount) },
+            { label: 'Date', value: `${deleteTarget.date_bs || '—'} (${fmtDate(deleteTarget.date_ad)})` },
+            { label: 'Reference / Bill', value: deleteTarget.invoice_no || deleteTarget.reference_no || 'General Payment' },
+          ]}
+          confirmText="Delete Payment"
+          confirmVariant="danger"
+          loading={deleteLoading}
+          onConfirm={handleConfirmDeletePayment}
+          onClose={() => { if (!deleteLoading) setDeleteTarget(null) }}
         />
       )}
     </div>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { Q, fetchSupplierBals, apiFetch, getAuthHeaders } from './api'
 import './Suppliers.css'
 import FetchBar from './FetchBar.jsx'
+import ConfirmModal from './ConfirmModal.jsx'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -82,7 +83,8 @@ function SkeletonRow() {
 
 // ── Supplier form (slide-in panel) ────────────────────────────────────────────
 function SupplierForm({ supplier, onClose, onSuccess }) {
-  const isEdit = Boolean(supplier?.id)
+  const supplierId = supplier?.supplier_id ?? supplier?.id
+  const isEdit = Boolean(supplierId)
   const [name,           setName]           = useState(supplier?.supplier_name ?? supplier?.name ?? '')
   const [pan,            setPan]            = useState(supplier?.supplier_pan  ?? supplier?.pan  ?? '')
   const [phone,          setPhone]          = useState(supplier?.phone   ?? '')
@@ -121,7 +123,7 @@ function SupplierForm({ supplier, onClose, onSuccess }) {
       is_active:       isActive,
     }
 
-    const url    = isEdit ? `${API_URL}/api/suppliers/${supplier.supplier_id ?? supplier.id}` : `${API_URL}/api/suppliers`
+    const url    = isEdit ? `${API_URL}/api/suppliers/${supplierId}` : `${API_URL}/api/suppliers`
     const method = isEdit ? 'PUT' : 'POST'
 
     try {
@@ -206,6 +208,8 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
   const [sortBy,        setSortBy]        = useState('due_desc')
   const [showForm,      setShowForm]      = useState(false)
   const [editTarget,    setEditTarget]    = useState(null)
+  const [deleteTarget,  setDeleteTarget]  = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Allow Dashboard's mobile FAB action sheet to open the Add Supplier form externally.
   // Track last-seen value so re-mounting with the same counter doesn't re-open the form.
@@ -239,6 +243,14 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
 
   const filtered = suppliers
     .filter(s => {
+      // Active / Inactive filtering
+      if (statusFilter === 'inactive') {
+        if (s.is_active) return false
+      } else if (statusFilter !== 'all') {
+        // Default ('') and balance filters show active parties only
+        if (!s.is_active) return false
+      }
+
       const due = parseFloat(s.balance_due ?? 0)
       if (statusFilter === 'due' && due <= 0) return false
       if (statusFilter === 'settled' && due > 0) return false
@@ -269,27 +281,33 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
 
   function openEdit(s) { setEditTarget(s); setShowForm(true) }
 
-  function handleDelete(id) {
-    if (!window.confirm('Deactivate this supplier? This will hide them from active lists but keep history.')) return
-    fetch(`${API_URL}/api/suppliers/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: getAuthHeaders(),
-    })
-      .then(async res => {
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error ?? 'Failed to deactivate supplier')
-        }
+  function handleDelete(s) {
+    setDeleteTarget(s)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    const id = deleteTarget.supplier_id ?? deleteTarget.id
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/suppliers/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders(),
       })
-      .then(() => {
-        refresh()
-        if (onToast) onToast('Supplier deactivated successfully.', 'success')
-      })
-      .catch(err => {
-        console.error(err)
-        if (onToast) onToast(err.message || 'Failed to deactivate supplier', 'error')
-      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Failed to delete supplier')
+      }
+      setDeleteTarget(null)
+      refresh()
+      if (onToast) onToast(data.message || (data.deleted ? 'Supplier deleted permanently.' : 'Supplier deactivated.'), 'success')
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast(err.message || 'Failed to delete supplier', 'error')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   return (
@@ -343,9 +361,11 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
         </div>
 
         <select className="sup-filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label="Filter suppliers by balance status">
-          <option value="">All parties</option>
+          <option value="">Active parties</option>
           <option value="due">Parties with balance due</option>
           <option value="settled">Fully settled parties</option>
+          <option value="inactive">Inactive / Archived</option>
+          <option value="all">All parties (including Inactive)</option>
         </select>
 
         <select className="sup-filter-select sup-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort suppliers">
@@ -426,7 +446,7 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
                   <button className="sup-action-btn" onClick={() => openEdit(s)} title="Edit supplier">
                     <EditIcon />
                   </button>
-                  <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s.supplier_id)} title="Deactivate supplier">
+                  <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s)} title={s.is_active ? 'Delete or archive supplier' : 'Delete supplier'}>
                     <DeleteIcon />
                   </button>
                 </td>
@@ -479,7 +499,7 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
                 <button className="sup-action-btn" onClick={() => openEdit(s)} title="Edit supplier">
                   <EditIcon />
                 </button>
-                <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s.supplier_id)} title="Deactivate supplier">
+                <button className="sup-action-btn sup-action-btn--delete" onClick={() => handleDelete(s)} title={s.is_active ? 'Delete or archive supplier' : 'Delete supplier'}>
                   <DeleteIcon />
                 </button>
               </div>
@@ -493,6 +513,58 @@ export default function Suppliers({ onToast, openForm: openFormProp }) {
           supplier={editTarget}
           onClose={() => { setShowForm(false); setEditTarget(null) }}
           onSuccess={handleSuccess}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          isOpen={Boolean(deleteTarget)}
+          title={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? 'Deactivate Supplier'
+              : 'Delete Supplier'
+          }
+          subtitle={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? 'VAT Audit Trail Protected'
+              : 'Permanent Record Removal'
+          }
+          message={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? `Are you sure you want to deactivate "${deleteTarget.supplier_name}"?`
+              : `Are you sure you want to permanently delete "${deleteTarget.supplier_name}"?`
+          }
+          callout={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? 'This supplier has recorded purchase invoices or payments. To preserve your legal VAT purchase register (खरिद खाता), they will be archived and hidden from active lists instead of permanently purged.'
+              : 'This supplier has no recorded bills or payments. They will be permanently removed from your account. This action cannot be undone.'
+          }
+          details={[
+            { label: 'Supplier Name', value: deleteTarget.supplier_name },
+            { label: 'PAN', value: deleteTarget.supplier_pan || '—' },
+            { label: 'Current Balance Due', value: fmtRs(deleteTarget.balance_due ?? 0) },
+            ...((parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? [
+                  { label: 'Total Purchased', value: fmtRs(deleteTarget.total_purchased ?? 0) },
+                  { label: 'Total Paid', value: fmtRs(deleteTarget.total_paid ?? 0) },
+                ]
+              : [
+                  { label: 'Opening Balance', value: fmtRs(deleteTarget.opening_balance ?? 0) },
+                ]),
+          ]}
+          confirmText={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? 'Deactivate Supplier'
+              : 'Delete Permanently'
+          }
+          confirmVariant={
+            (parseFloat(deleteTarget.total_purchased ?? 0) > 0 || parseFloat(deleteTarget.total_paid ?? 0) > 0)
+              ? 'warning'
+              : 'danger'
+          }
+          loading={deleteLoading}
+          onConfirm={handleConfirmDelete}
+          onClose={() => { if (!deleteLoading) setDeleteTarget(null) }}
         />
       )}
     </div>

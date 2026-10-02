@@ -1,0 +1,177 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   VYAPAAR — GRADUAL SCROLL EXPANSION HERO CSS
+   Zero CSS transition conflicts, pure 60fps lerped direct DOM mutations
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.hero-page {
+  position: relative;
+  width: 100%;
+  background: var(--bg, #ffffff);
+  color: var(--fg, #252422);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.app-light.hero-page {
+  --bg: #ffffff;
+  --fg: #252422;
+}
+
+.app-dark.hero-page {
+  --bg: #0e0e0d;
+  --fg: #fffcf2;
+}
+
+/* ── Scroll Runway (300vh allows gradual, cinematic expansion) ── */
+.hero-scroll-track {
+  position: relative;
+  height: 300vh;
+  width: 100%;
+}
+
+.hero-sticky-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── The Image Pod: starts centered (50vw x 64vh), scales to 100vw x 100vh ── */
+.hero-image-pod {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: width, height, border-radius;
+  /* Crucial: NO CSS transition on width/height/border-radius so it follows the scroll lerp frame-by-frame */
+  transition: box-shadow 0.3s ease;
+  width: 50vw;
+  height: 64vh;
+  border-radius: 42px;
+}
+
+/* Background image filling the pod */
+.hero-image-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Vignette / Contrast gradient */
+.hero-image-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%);
+  pointer-events: none;
+  opacity: 0.08;
+  will-change: opacity;
+}
+
+/* ── Typography Overlay ── */
+.hero-text-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 3.5vw;
+  box-sizing: border-box;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Massive Left ("VYA") and Right ("PAAR") Display Typography */
+.hero-massive-word {
+  font-family: 'Syne', 'Abril Fatface', 'Bricolage Grotesque', sans-serif;
+  font-weight: 800;
+  font-size: clamp(48px, 13vw, 165px);
+  color: #c0390b; /* Authentic rich terracotta from Image 2 */
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 25px rgba(0, 0, 0, 0.45);
+  flex: 1;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.hero-massive-word--left {
+  text-align: left;
+}
+
+.hero-massive-word--right {
+  text-align: right;
+}
+
+/* ── Center Script Group (vyapaar + ledger engineered for nepal) ── */
+.hero-center-script {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0 2vw;
+  flex-shrink: 0;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.hero-script-brand {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: clamp(24px, 3.5vw, 46px);
+  font-weight: 600;
+  color: #c0390b;
+  line-height: 1;
+  margin-bottom: 2px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.hero-script-tagline {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: clamp(18px, 2.6vw, 36px);
+  font-weight: 400;
+  color: #ffffff;
+  line-height: 1.15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Responsive Mobile Styling ── */
+@media (max-width: 768px) {
+  .hero-image-pod {
+    width: 78vw;
+    height: 56vh;
+    border-radius: 28px;
+  }
+
+  .hero-massive-word {
+    font-size: clamp(34px, 13.5vw, 76px);
+  }
+
+  .hero-script-brand {
+    font-size: 20px;
+  }
+
+  .hero-script-tagline {
+    font-size: 15px;
+  }
+
+  .hero-text-overlay {
+    padding: 0 2vw;
+  }
+}
